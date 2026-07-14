@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omnisocials"
+version = "0.1.0"
+description = "Official Python SDK for the OmniSocials Public API - schedule and publish social media posts, upload media, and read analytics across 11 platforms."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "OmniSocials", email = "hello@omnisocials.com" }]
+keywords = [
+    "omnisocials",
+    "social media",
+    "api",
+    "sdk",
+    "instagram",
+    "facebook",
+    "linkedin",
+    "youtube",
+    "tiktok",
+    "twitter",
+    "scheduling",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = ["httpx>=0.23.0,<1"]
+
+[project.urls]
+Homepage = "https://omnisocials.com"
+Documentation = "https://docs.omnisocials.com"
+Repository = "https://github.com/OmniSocials/omnisocials-python"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omnisocials"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/omnisocials", "README.md", "pyproject.toml"]
