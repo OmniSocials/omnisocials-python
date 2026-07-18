@@ -2,6 +2,7 @@
 
 from .accounts import Accounts, AsyncAccounts
 from .analytics import Analytics, AsyncAnalytics
+from .audio import AsyncAudio, Audio
 from .folders import AsyncFolders, Folders
 from .locations import AsyncLocations, Locations
 from .media import AsyncMedia, Media
@@ -21,6 +22,8 @@ __all__ = [
     "AsyncAnalytics",
     "Locations",
     "AsyncLocations",
+    "Audio",
+    "AsyncAudio",
     "Webhooks",
     "AsyncWebhooks",
 ]
