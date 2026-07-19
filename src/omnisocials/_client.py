@@ -26,6 +26,7 @@ from .resources.accounts import Accounts, AsyncAccounts
 from .resources.analytics import Analytics, AsyncAnalytics
 from .resources.audio import AsyncAudio, Audio
 from .resources.folders import AsyncFolders, Folders
+from .resources.inbox import AsyncInbox, Inbox
 from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
 from .resources.posts import AsyncPosts, Posts
@@ -221,6 +222,7 @@ class OmniSocials(_BaseClient):
         self.analytics = Analytics(self)
         self.locations = Locations(self)
         self.audio = Audio(self)
+        self.inbox = Inbox(self)
         self.webhooks = Webhooks(self)
 
     # -- lifecycle ---------------------------------------------------------
@@ -312,6 +314,7 @@ class AsyncOmniSocials(_BaseClient):
         self.analytics = AsyncAnalytics(self)
         self.locations = AsyncLocations(self)
         self.audio = AsyncAudio(self)
+        self.inbox = AsyncInbox(self)
         self.webhooks = AsyncWebhooks(self)
 
     # -- lifecycle ---------------------------------------------------------
