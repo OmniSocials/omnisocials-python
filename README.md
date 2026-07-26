@@ -80,6 +80,24 @@ post = client.posts.create_and_publish(
 )
 ```
 
+### Per-media alt text
+
+Every `media_urls` / `media_ids` entry accepts either a plain string or a dict with an `alt` accessibility description (max 1500 chars). Alt text is delivered to Mastodon (media description), Bluesky (embed alt), X (photos and GIFs), and Pinterest (pin alt text). Strings and dicts can be mixed, and the same shape works in per-platform mappings and `thread_parts` media.
+
+```python
+post = client.posts.create(
+    content="Sunrise over the harbor",
+    channels=["mastodon", "bluesky"],
+    scheduled_at="2026-08-01T09:00:00Z",
+    media_urls=[
+        {
+            "url": "https://example.com/harbor.jpg",
+            "alt": "A small sailboat crossing a calm harbor at sunrise, sky in deep orange",
+        }
+    ],
+)
+```
+
 ### Post to specific platforms with platform options
 
 `content` can be a per-platform mapping (with `default` as the fallback), and each platform has its own options object:
@@ -207,6 +225,36 @@ sub = client.folders.create(name="August", parent_id=folder["data"]["id"])
 client.folders.update(sub["data"]["id"], name="August 2026")
 client.folders.update(sub["data"]["id"], parent_id=None)  # move to top level
 client.folders.delete(folder["data"]["id"])  # files move to root, subfolders move up
+```
+
+## Hashtag Sets
+
+Save reusable hashtag groups and apply them to posts at create time. Uses the `posts:read` / `posts:write` scopes.
+
+```python
+hashtag_set = client.hashtag_sets.create(
+    name="Launch",
+    hashtags=["saas", "buildinpublic", "startup"],  # or one string: "#saas #buildinpublic #startup"
+)
+print(hashtag_set["data"]["preview"])  # "#saas #buildinpublic #startup"
+
+client.hashtag_sets.list()
+client.hashtag_sets.get(hashtag_set["data"]["id"])
+client.hashtag_sets.update(hashtag_set["data"]["id"], hashtags=["saas", "founder"])  # replaces the full list
+client.hashtag_sets.delete(hashtag_set["data"]["id"])  # returns None (204)
+```
+
+Apply a set when creating a post with `hashtag_set` (the set name, case-insensitive) or `hashtag_set_id`. The set is applied once at create time and tags already in the caption are skipped. `hashtag_placement` is `"caption_append"` (default) or `"first_comment"`, and `hashtag_platforms` restricts the hashtags to a subset of the post's channels. Instagram's 30-hashtag cap returns error code `hashtag_limit_exceeded`.
+
+```python
+client.posts.create(
+    content="Launch day!",
+    channels=["instagram", "x"],
+    scheduled_at="2026-08-01T09:00:00Z",
+    hashtag_set="Launch",
+    hashtag_placement="first_comment",
+    hashtag_platforms=["instagram"],
+)
 ```
 
 ## Accounts

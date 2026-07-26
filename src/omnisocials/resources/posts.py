@@ -13,8 +13,16 @@ __all__ = ["Posts", "AsyncPosts"]
 
 # `content` is a plain string, or a per-platform mapping with a `default` key.
 ContentType = Union[str, Mapping[str, str]]
+# One `media_ids` / `media_urls` entry: a plain string, or a mapping with an
+# `alt` accessibility description (max 1500 chars), e.g.
+# `{"url": "https://...", "alt": "..."}` for media_urls or
+# `{"id": "...", "alt": "..."}` for media_ids. Alt text is delivered to
+# Mastodon (media description), Bluesky (embed alt), X (photos/GIFs), and
+# Pinterest (pin alt text). The same entry shape works inside
+# x/bluesky/mastodon `thread_parts` media.
+MediaEntryType = Union[str, Mapping[str, str]]
 # `media_ids` / `media_urls` are a flat list, or a per-platform mapping.
-MediaMapType = Union[Sequence[str], Mapping[str, Sequence[str]]]
+MediaMapType = Union[Sequence[MediaEntryType], Mapping[str, Sequence[MediaEntryType]]]
 
 
 def _create_body(
@@ -33,6 +41,10 @@ def _create_body(
     location_id: Optional[str],
     collaborators: Optional[Sequence[str]],
     user_tags: Optional[Sequence[Mapping[str, Any]]],
+    hashtag_set: Optional[str],
+    hashtag_set_id: Optional[str],
+    hashtag_placement: Optional[str],
+    hashtag_platforms: Optional[Sequence[str]],
     pinterest: Optional[Mapping[str, Any]],
     youtube: Optional[Mapping[str, Any]],
     instagram: Optional[Mapping[str, Any]],
@@ -61,6 +73,10 @@ def _create_body(
             "location_id": location_id,
             "collaborators": collaborators,
             "user_tags": user_tags,
+            "hashtag_set": hashtag_set,
+            "hashtag_set_id": hashtag_set_id,
+            "hashtag_placement": hashtag_placement,
+            "hashtag_platforms": hashtag_platforms,
             "pinterest": pinterest,
             "youtube": youtube,
             "instagram": instagram,
@@ -177,6 +193,10 @@ class Posts:
         location_id: Optional[str] = None,
         collaborators: Optional[Sequence[str]] = None,
         user_tags: Optional[Sequence[Mapping[str, Any]]] = None,
+        hashtag_set: Optional[str] = None,
+        hashtag_set_id: Optional[str] = None,
+        hashtag_placement: Optional[str] = None,
+        hashtag_platforms: Optional[Sequence[str]] = None,
         pinterest: Optional[Mapping[str, Any]] = None,
         youtube: Optional[Mapping[str, Any]] = None,
         instagram: Optional[Mapping[str, Any]] = None,
@@ -190,7 +210,15 @@ class Posts:
         google_business: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
-        ``scheduled_at`` is set)."""
+        ``scheduled_at`` is set).
+
+        ``hashtag_set`` (set name, case-insensitive) or ``hashtag_set_id``
+        applies a saved hashtag set once at create time; tags already in a
+        caption are skipped; Instagram's 30-hashtag cap returns error code
+        ``hashtag_limit_exceeded``. ``hashtag_placement`` is
+        ``"caption_append"`` (default) or ``"first_comment"``;
+        ``hashtag_platforms`` restricts the tags to a subset of ``channels``.
+        """
         body = _create_body(
             content=content,
             channels=channels,
@@ -206,6 +234,10 @@ class Posts:
             location_id=location_id,
             collaborators=collaborators,
             user_tags=user_tags,
+            hashtag_set=hashtag_set,
+            hashtag_set_id=hashtag_set_id,
+            hashtag_placement=hashtag_placement,
+            hashtag_platforms=hashtag_platforms,
             pinterest=pinterest,
             youtube=youtube,
             instagram=instagram,
@@ -236,6 +268,10 @@ class Posts:
         location_id: Optional[str] = None,
         collaborators: Optional[Sequence[str]] = None,
         user_tags: Optional[Sequence[Mapping[str, Any]]] = None,
+        hashtag_set: Optional[str] = None,
+        hashtag_set_id: Optional[str] = None,
+        hashtag_placement: Optional[str] = None,
+        hashtag_platforms: Optional[Sequence[str]] = None,
         pinterest: Optional[Mapping[str, Any]] = None,
         youtube: Optional[Mapping[str, Any]] = None,
         instagram: Optional[Mapping[str, Any]] = None,
@@ -264,6 +300,10 @@ class Posts:
             location_id=location_id,
             collaborators=collaborators,
             user_tags=user_tags,
+            hashtag_set=hashtag_set,
+            hashtag_set_id=hashtag_set_id,
+            hashtag_placement=hashtag_placement,
+            hashtag_platforms=hashtag_platforms,
             pinterest=pinterest,
             youtube=youtube,
             instagram=instagram,
@@ -394,6 +434,10 @@ class AsyncPosts:
         location_id: Optional[str] = None,
         collaborators: Optional[Sequence[str]] = None,
         user_tags: Optional[Sequence[Mapping[str, Any]]] = None,
+        hashtag_set: Optional[str] = None,
+        hashtag_set_id: Optional[str] = None,
+        hashtag_placement: Optional[str] = None,
+        hashtag_platforms: Optional[Sequence[str]] = None,
         pinterest: Optional[Mapping[str, Any]] = None,
         youtube: Optional[Mapping[str, Any]] = None,
         instagram: Optional[Mapping[str, Any]] = None,
@@ -407,7 +451,15 @@ class AsyncPosts:
         google_business: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
-        ``scheduled_at`` is set)."""
+        ``scheduled_at`` is set).
+
+        ``hashtag_set`` (set name, case-insensitive) or ``hashtag_set_id``
+        applies a saved hashtag set once at create time; tags already in a
+        caption are skipped; Instagram's 30-hashtag cap returns error code
+        ``hashtag_limit_exceeded``. ``hashtag_placement`` is
+        ``"caption_append"`` (default) or ``"first_comment"``;
+        ``hashtag_platforms`` restricts the tags to a subset of ``channels``.
+        """
         body = _create_body(
             content=content,
             channels=channels,
@@ -423,6 +475,10 @@ class AsyncPosts:
             location_id=location_id,
             collaborators=collaborators,
             user_tags=user_tags,
+            hashtag_set=hashtag_set,
+            hashtag_set_id=hashtag_set_id,
+            hashtag_placement=hashtag_placement,
+            hashtag_platforms=hashtag_platforms,
             pinterest=pinterest,
             youtube=youtube,
             instagram=instagram,
@@ -453,6 +509,10 @@ class AsyncPosts:
         location_id: Optional[str] = None,
         collaborators: Optional[Sequence[str]] = None,
         user_tags: Optional[Sequence[Mapping[str, Any]]] = None,
+        hashtag_set: Optional[str] = None,
+        hashtag_set_id: Optional[str] = None,
+        hashtag_placement: Optional[str] = None,
+        hashtag_platforms: Optional[Sequence[str]] = None,
         pinterest: Optional[Mapping[str, Any]] = None,
         youtube: Optional[Mapping[str, Any]] = None,
         instagram: Optional[Mapping[str, Any]] = None,
@@ -481,6 +541,10 @@ class AsyncPosts:
             location_id=location_id,
             collaborators=collaborators,
             user_tags=user_tags,
+            hashtag_set=hashtag_set,
+            hashtag_set_id=hashtag_set_id,
+            hashtag_placement=hashtag_placement,
+            hashtag_platforms=hashtag_platforms,
             pinterest=pinterest,
             youtube=youtube,
             instagram=instagram,

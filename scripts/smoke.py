@@ -72,6 +72,7 @@ EXPECTED = {
         "delete",
     ],
     "folders": ["list", "create", "update", "delete"],
+    "hashtag_sets": ["list", "get", "create", "update", "delete"],
     "accounts": ["list", "get"],
     "analytics": ["post", "posts", "overview", "accounts", "best_times"],
     "locations": ["search", "validate"],

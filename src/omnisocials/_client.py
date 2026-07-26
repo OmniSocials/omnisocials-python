@@ -26,6 +26,7 @@ from .resources.accounts import Accounts, AsyncAccounts
 from .resources.analytics import Analytics, AsyncAnalytics
 from .resources.audio import AsyncAudio, Audio
 from .resources.folders import AsyncFolders, Folders
+from .resources.hashtag_sets import AsyncHashtagSets, HashtagSets
 from .resources.inbox import AsyncInbox, Inbox
 from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
@@ -34,7 +35,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -218,6 +219,7 @@ class OmniSocials(_BaseClient):
         self.posts = Posts(self)
         self.media = Media(self)
         self.folders = Folders(self)
+        self.hashtag_sets = HashtagSets(self)
         self.accounts = Accounts(self)
         self.analytics = Analytics(self)
         self.locations = Locations(self)
@@ -310,6 +312,7 @@ class AsyncOmniSocials(_BaseClient):
         self.posts = AsyncPosts(self)
         self.media = AsyncMedia(self)
         self.folders = AsyncFolders(self)
+        self.hashtag_sets = AsyncHashtagSets(self)
         self.accounts = AsyncAccounts(self)
         self.analytics = AsyncAnalytics(self)
         self.locations = AsyncLocations(self)
