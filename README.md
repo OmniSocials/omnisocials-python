@@ -82,7 +82,7 @@ post = client.posts.create_and_publish(
 
 ### Per-media alt text
 
-Every `media_urls` / `media_ids` entry accepts either a plain string or a dict with an `alt` accessibility description (max 1500 chars). Alt text is delivered to Mastodon (media description), Bluesky (embed alt), X (photos and GIFs), and Pinterest (pin alt text). Strings and dicts can be mixed, and the same shape works in per-platform mappings and `thread_parts` media.
+Every `media_urls` / `media_ids` entry accepts either a plain string or a dict with an `alt` accessibility description (max 1500 chars). Alt text is delivered to Mastodon (media description), Bluesky (embed alt), X (photos and GIFs), Pinterest (pin alt text), Instagram (images), and LinkedIn (images). Strings and dicts can be mixed, and the same shape works in per-platform mappings and `thread_parts` media.
 
 ```python
 post = client.posts.create(
@@ -151,7 +151,9 @@ client.posts.retry("123")             # retry only the failed platforms of a fai
 client.posts.delete("123")            # returns None (204)
 
 # Recent posts fetched live from the connected platforms (including content
-# published outside OmniSocials). Requires the analytics:read scope.
+# published outside OmniSocials). Requires the analytics:read scope. Video
+# records include duration_seconds (whole seconds; TikTok and YouTube today,
+# null for images and platforms that don't expose it).
 recent = client.posts.recent_platform(limit=10, platforms=["instagram", "tiktok"])
 ```
 

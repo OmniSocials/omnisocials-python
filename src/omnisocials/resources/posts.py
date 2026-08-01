@@ -17,9 +17,9 @@ ContentType = Union[str, Mapping[str, str]]
 # `alt` accessibility description (max 1500 chars), e.g.
 # `{"url": "https://...", "alt": "..."}` for media_urls or
 # `{"id": "...", "alt": "..."}` for media_ids. Alt text is delivered to
-# Mastodon (media description), Bluesky (embed alt), X (photos/GIFs), and
-# Pinterest (pin alt text). The same entry shape works inside
-# x/bluesky/mastodon `thread_parts` media.
+# Mastodon (media description), Bluesky (embed alt), X (photos/GIFs),
+# Pinterest (pin alt text), Instagram (images), and LinkedIn (images).
+# The same entry shape works inside x/bluesky/mastodon `thread_parts` media.
 MediaEntryType = Union[str, Mapping[str, str]]
 # `media_ids` / `media_urls` are a flat list, or a per-platform mapping.
 MediaMapType = Union[Sequence[MediaEntryType], Mapping[str, Sequence[MediaEntryType]]]
