@@ -382,6 +382,17 @@ class Posts:
         """``POST /posts/{id}/publish`` - publish a draft or scheduled post now."""
         return self._client.request("POST", f"/posts/{post_id}/publish")
 
+    def retry(self, post_id: str) -> Any:
+        """``POST /posts/{id}/retry`` - retry the failed platforms of a
+        ``failed`` or ``warning`` (partially failed) post, on the same post.
+
+        Only the platforms that failed are re-published; platforms that
+        already succeeded are never posted again. Asynchronous: a 200 means
+        the retry is queued - poll ``get`` for the outcome. Max 3 retries per
+        platform.
+        """
+        return self._client.request("POST", f"/posts/{post_id}/retry")
+
 
 class AsyncPosts:
     def __init__(self, client: "AsyncOmniSocials") -> None:
@@ -622,3 +633,14 @@ class AsyncPosts:
     async def publish(self, post_id: str) -> Any:
         """``POST /posts/{id}/publish`` - publish a draft or scheduled post now."""
         return await self._client.request("POST", f"/posts/{post_id}/publish")
+
+    async def retry(self, post_id: str) -> Any:
+        """``POST /posts/{id}/retry`` - retry the failed platforms of a
+        ``failed`` or ``warning`` (partially failed) post, on the same post.
+
+        Only the platforms that failed are re-published; platforms that
+        already succeeded are never posted again. Asynchronous: a 200 means
+        the retry is queued - poll ``get`` for the outcome. Max 3 retries per
+        platform.
+        """
+        return await self._client.request("POST", f"/posts/{post_id}/retry")
