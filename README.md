@@ -140,6 +140,22 @@ post = client.posts.create(
 
 On update, passing `x={"thread_parts": None}` clears the thread and reverts the post to single-tweet mode. Only top-level `None` values are dropped from request bodies, so nested `None` values like this one are sent as JSON `null`.
 
+### X link posts use credits
+
+X bills API posts whose text contains a URL at a premium, and OmniSocials passes that fee through as prepaid credits (20 credits per URL-containing tweet; threads billed per part with a link). When a create targets X and the text contains a URL, the response includes a top-level `warnings` list (a sibling of `data`):
+
+```python
+res = client.posts.create(
+    content="Read the full story: https://example.com/post",
+    channels=["x"],
+)
+for warning in res.get("warnings", []):
+    if warning["code"] == "x_url_post_credits":
+        print(warning["credits_required"], warning["credits_balance"])
+```
+
+From `enforce_from` (2026-08-14) the balance is checked at publish time, but credits are only deducted after the post successfully publishes (a failed publish is never charged). If the balance can't cover it, only the X target fails (other platforms publish normally); top up in the dashboard under Settings -> Organisation -> Billing -> Credits, then call `posts.retry`. Posts without links, analytics, and media on X stay free. There is no API endpoint for credits — they are managed in the dashboard.
+
 ### Other post operations
 
 ```python
