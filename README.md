@@ -156,6 +156,24 @@ for warning in res.get("warnings", []):
 
 From `enforce_from` (2026-08-14) the balance is checked at publish time, but credits are only deducted after the post successfully publishes (a failed publish is never charged). If the balance can't cover it, only the X target fails (other platforms publish normally); top up in the dashboard under Settings -> Organisation -> Billing -> Credits, then call `posts.retry`. Posts without links, analytics, and media on X stay free. There is no API endpoint for credits — they are managed in the dashboard.
 
+From 2026-08-14, scheduling an X link post also reserves its cost up front. If reserving this post's cost would push the company's total reserved credits (across every scheduled X link post) past its balance, `posts.create`, `posts.update`, and `posts.publish` refuse the request before it's even accepted, raising a `402` with `error.code == "x_credits_insufficient"` and `error.details` carrying `credits_required`, `credits_balance`, and `credits_reserved`:
+
+```python
+from omnisocials import APIError
+
+try:
+    client.posts.create(
+        content="Read the full story: https://example.com/post",
+        channels=["x"],
+        scheduled_at="2026-08-20T09:00:00Z",
+    )
+except APIError as exc:
+    if exc.code == "x_credits_insufficient":
+        print(exc.body["error"]["details"])
+```
+
+Drafts (no `scheduled_at`) are never gated, and posts publishing before 2026-08-14 are never gated. This gate is separate from the `x_url_post_credits` warning above (a non-blocking notice at create time) and the publish-time debit failure (which fails only the X target, not the whole request).
+
 ### Other post operations
 
 ```python
@@ -174,6 +192,38 @@ recent = client.posts.recent_platform(limit=10, platforms=["instagram", "tiktok"
 ```
 
 `retry` re-publishes only the platforms that failed, on the same post; platforms that already succeeded are never posted again. It is asynchronous: a 200 means the retry is queued, so poll `get` for the outcome. Max 3 retries per platform.
+
+## Social Inbox
+
+List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes.
+
+```python
+conversations = client.inbox.list_conversations(platform="instagram", unread=True)
+conversation_id = conversations["data"][0]["id"]
+
+thread = client.inbox.get_messages(conversation_id)
+for message in thread["data"]:
+    print(message["direction"], message["text"])  # direction is "incoming" or "outgoing"
+
+client.inbox.mark_read(conversation_id)
+client.inbox.reply(conversation_id, "Thanks for reaching out!")
+```
+
+`platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, or `"x"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`.
+
+### X DM replies use credits
+
+Replying to an X DM costs 2 prepaid credits per send, debited from the company balance before the send and auto-refunded if the send fails. `inbox.reply` can fail with a `402` on two new codes: `insufficient_credits` (the balance can't cover the 2 credits) and `x_inbox_suspended` (the workspace's X inbox auto-suspended after the balance hit zero — top up and re-enable it in the dashboard to resume; DMs that arrived while suspended are not recovered).
+
+```python
+from omnisocials import APIError
+
+try:
+    client.inbox.reply(conversation_id, "On it, thanks!")
+except APIError as exc:
+    if exc.code in ("insufficient_credits", "x_inbox_suspended"):
+        print(exc.code, exc.body["error"])
+```
 
 ## Media
 

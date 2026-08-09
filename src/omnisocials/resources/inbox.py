@@ -55,10 +55,10 @@ class Inbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``), ``type`` (``"dm"``, ``"comment"``, ``"mention"``),
-        and ``unread``. ``limit`` is 1-100. Uses cursor pagination: pass the
-        previous response's ``pagination.next_cursor`` as ``cursor`` to keep
-        paging while ``pagination.has_more`` is true.
+        ``"linkedin"``, ``"x"``), ``type`` (``"dm"``, ``"comment"``,
+        ``"mention"``), and ``unread``. ``limit`` is 1-100. Uses cursor
+        pagination: pass the previous response's ``pagination.next_cursor``
+        as ``cursor`` to keep paging while ``pagination.has_more`` is true.
         """
         return self._client.request(
             "GET",
@@ -117,6 +117,14 @@ class Inbox:
         Optionally attach a single media asset by public URL with
         ``attachment_url`` + ``attachment_type`` (``"image"``, ``"video"``,
         ``"audio"``, or ``"file"``). Returns the created outbound message.
+
+        X DM replies cost 2 prepaid credits per send, debited from the
+        company balance before the send and auto-refunded if the send fails.
+        Can fail with ``402`` and code ``insufficient_credits`` (balance
+        can't cover the 2 credits) or ``x_inbox_suspended`` (the workspace's
+        X inbox auto-suspended at zero balance; top up and re-enable it in
+        the dashboard to resume - DMs that arrive while suspended are not
+        recovered).
         """
         body = _reply_body(
             text=text,
@@ -147,10 +155,10 @@ class AsyncInbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``), ``type`` (``"dm"``, ``"comment"``, ``"mention"``),
-        and ``unread``. ``limit`` is 1-100. Uses cursor pagination: pass the
-        previous response's ``pagination.next_cursor`` as ``cursor`` to keep
-        paging while ``pagination.has_more`` is true.
+        ``"linkedin"``, ``"x"``), ``type`` (``"dm"``, ``"comment"``,
+        ``"mention"``), and ``unread``. ``limit`` is 1-100. Uses cursor
+        pagination: pass the previous response's ``pagination.next_cursor``
+        as ``cursor`` to keep paging while ``pagination.has_more`` is true.
         """
         return await self._client.request(
             "GET",
@@ -209,6 +217,14 @@ class AsyncInbox:
         Optionally attach a single media asset by public URL with
         ``attachment_url`` + ``attachment_type`` (``"image"``, ``"video"``,
         ``"audio"``, or ``"file"``). Returns the created outbound message.
+
+        X DM replies cost 2 prepaid credits per send, debited from the
+        company balance before the send and auto-refunded if the send fails.
+        Can fail with ``402`` and code ``insufficient_credits`` (balance
+        can't cover the 2 credits) or ``x_inbox_suspended`` (the workspace's
+        X inbox auto-suspended at zero balance; top up and re-enable it in
+        the dashboard to resume - DMs that arrive while suspended are not
+        recovered).
         """
         body = _reply_body(
             text=text,

@@ -225,6 +225,15 @@ class Posts:
         ``credits_required`` and ``credits_balance``: X's link-post fee is
         passed through as prepaid credits, debited at publish time (from
         2026-08-14). Credits are managed in the dashboard, not the API.
+
+        From 2026-08-14, scheduling an X link post also reserves its credit
+        cost up front: if that reservation would push the company's total
+        reserved credits (across every scheduled X link post) past its
+        balance, the request is rejected before it's accepted, with
+        ``402 x_credits_insufficient`` (``error.details`` carries
+        ``credits_required``, ``credits_balance``, and
+        ``credits_reserved``). Drafts (no ``scheduled_at``) are never gated,
+        and posts publishing before 2026-08-14 are never gated.
         """
         body = _create_body(
             content=content,
@@ -359,6 +368,12 @@ class Posts:
         e.g. ``x={"thread_parts": None}`` still clears an X thread (reverts
         the post to single-tweet mode). The same applies to ``bluesky`` and
         ``mastodon`` thread parts.
+
+        Updating a scheduled X link post is subject to the same schedule-time
+        credit gate as :meth:`create`: if the update would push the
+        company's total reserved credits (across every scheduled X link
+        post) past its balance, the request is rejected with
+        ``402 x_credits_insufficient`` before anything changes.
         """
         body = _update_body(
             content=content,
@@ -389,7 +404,12 @@ class Posts:
         return self._client.request("DELETE", f"/posts/{post_id}")
 
     def publish(self, post_id: str) -> Any:
-        """``POST /posts/{id}/publish`` - publish a draft or scheduled post now."""
+        """``POST /posts/{id}/publish`` - publish a draft or scheduled post now.
+
+        Publishing an X link post is subject to the same schedule-time
+        credit gate as :meth:`create` (``402 x_credits_insufficient`` when
+        the reservation would exceed the company's credit balance).
+        """
         return self._client.request("POST", f"/posts/{post_id}/publish")
 
     def retry(self, post_id: str) -> Any:
@@ -487,6 +507,15 @@ class AsyncPosts:
         ``credits_required`` and ``credits_balance``: X's link-post fee is
         passed through as prepaid credits, debited at publish time (from
         2026-08-14). Credits are managed in the dashboard, not the API.
+
+        From 2026-08-14, scheduling an X link post also reserves its credit
+        cost up front: if that reservation would push the company's total
+        reserved credits (across every scheduled X link post) past its
+        balance, the request is rejected before it's accepted, with
+        ``402 x_credits_insufficient`` (``error.details`` carries
+        ``credits_required``, ``credits_balance``, and
+        ``credits_reserved``). Drafts (no ``scheduled_at``) are never gated,
+        and posts publishing before 2026-08-14 are never gated.
         """
         body = _create_body(
             content=content,
@@ -621,6 +650,12 @@ class AsyncPosts:
 
         Only top-level ``None`` values are dropped from the body, so passing
         e.g. ``x={"thread_parts": None}`` still clears an X thread.
+
+        Updating a scheduled X link post is subject to the same schedule-time
+        credit gate as :meth:`create`: if the update would push the
+        company's total reserved credits (across every scheduled X link
+        post) past its balance, the request is rejected with
+        ``402 x_credits_insufficient`` before anything changes.
         """
         body = _update_body(
             content=content,
@@ -651,7 +686,12 @@ class AsyncPosts:
         return await self._client.request("DELETE", f"/posts/{post_id}")
 
     async def publish(self, post_id: str) -> Any:
-        """``POST /posts/{id}/publish`` - publish a draft or scheduled post now."""
+        """``POST /posts/{id}/publish`` - publish a draft or scheduled post now.
+
+        Publishing an X link post is subject to the same schedule-time
+        credit gate as :meth:`create` (``402 x_credits_insufficient`` when
+        the reservation would exceed the company's credit balance).
+        """
         return await self._client.request("POST", f"/posts/{post_id}/publish")
 
     async def retry(self, post_id: str) -> Any:
