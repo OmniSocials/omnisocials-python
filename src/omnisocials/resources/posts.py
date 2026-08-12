@@ -56,6 +56,7 @@ def _create_body(
     bluesky: Optional[Mapping[str, Any]],
     mastodon: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
+    linkedin_poll: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -88,6 +89,7 @@ def _create_body(
             "bluesky": bluesky,
             "mastodon": mastodon,
             "google_business": google_business,
+            "linkedin_poll": linkedin_poll,
         }
     )
 
@@ -114,6 +116,7 @@ def _update_body(
     bluesky: Optional[Mapping[str, Any]],
     mastodon: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
+    linkedin_poll: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -137,6 +140,7 @@ def _update_body(
             "bluesky": bluesky,
             "mastodon": mastodon,
             "google_business": google_business,
+            "linkedin_poll": linkedin_poll,
         }
     )
 
@@ -208,6 +212,7 @@ class Posts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
@@ -265,6 +270,7 @@ class Posts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return self._client.request("POST", "/posts/create", json=body)
 
@@ -299,6 +305,7 @@ class Posts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
@@ -334,6 +341,7 @@ class Posts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return self._client.request("POST", "/posts/create-and-publish", json=body)
 
@@ -361,6 +369,7 @@ class Posts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -396,6 +405,7 @@ class Posts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
@@ -490,6 +500,7 @@ class AsyncPosts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
@@ -547,6 +558,7 @@ class AsyncPosts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return await self._client.request("POST", "/posts/create", json=body)
 
@@ -581,6 +593,7 @@ class AsyncPosts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
@@ -616,6 +629,7 @@ class AsyncPosts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return await self._client.request(
             "POST", "/posts/create-and-publish", json=body
@@ -645,6 +659,7 @@ class AsyncPosts:
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -678,6 +693,7 @@ class AsyncPosts:
             bluesky=bluesky,
             mastodon=mastodon,
             google_business=google_business,
+            linkedin_poll=linkedin_poll,
         )
         return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
