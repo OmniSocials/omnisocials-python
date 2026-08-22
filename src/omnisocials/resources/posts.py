@@ -156,7 +156,7 @@ class Posts:
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ) -> Any:
-        """``GET /posts`` - list posts (status: draft, scheduled, posted, failed)."""
+        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow)."""
         return self._client.request(
             "GET", "/posts", query={"status": status, "limit": limit, "offset": offset}
         )
@@ -445,7 +445,7 @@ class AsyncPosts:
         limit: Optional[int] = None,
         offset: Optional[int] = None,
     ) -> Any:
-        """``GET /posts`` - list posts (status: draft, scheduled, posted, failed)."""
+        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow)."""
         return await self._client.request(
             "GET", "/posts", query={"status": status, "limit": limit, "offset": offset}
         )
