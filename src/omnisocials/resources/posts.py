@@ -19,7 +19,7 @@ ContentType = Union[str, Mapping[str, str]]
 # `{"id": "...", "alt": "..."}` for media_ids. Alt text is delivered to
 # Mastodon (media description), Bluesky (embed alt), X (photos/GIFs),
 # Pinterest (pin alt text), Instagram (images), and LinkedIn (images).
-# The same entry shape works inside x/bluesky/mastodon `thread_parts` media.
+# The same entry shape works inside x/bluesky/mastodon/threads `thread_parts` media.
 MediaEntryType = Union[str, Mapping[str, str]]
 # `media_ids` / `media_urls` are a flat list, or a per-platform mapping.
 MediaMapType = Union[Sequence[MediaEntryType], Mapping[str, Sequence[MediaEntryType]]]
@@ -55,6 +55,7 @@ def _create_body(
     x: Optional[Mapping[str, Any]],
     bluesky: Optional[Mapping[str, Any]],
     mastodon: Optional[Mapping[str, Any]],
+    threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
@@ -88,6 +89,7 @@ def _create_body(
             "x": x,
             "bluesky": bluesky,
             "mastodon": mastodon,
+            "threads": threads,
             "google_business": google_business,
             "linkedin_poll": linkedin_poll,
         }
@@ -115,6 +117,7 @@ def _update_body(
     x: Optional[Mapping[str, Any]],
     bluesky: Optional[Mapping[str, Any]],
     mastodon: Optional[Mapping[str, Any]],
+    threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
@@ -139,6 +142,7 @@ def _update_body(
             "x": x,
             "bluesky": bluesky,
             "mastodon": mastodon,
+            "threads": threads,
             "google_business": google_business,
             "linkedin_poll": linkedin_poll,
         }
@@ -211,6 +215,7 @@ class Posts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
@@ -269,6 +274,7 @@ class Posts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
@@ -304,6 +310,7 @@ class Posts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
@@ -340,6 +347,7 @@ class Posts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
@@ -368,6 +376,7 @@ class Posts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
@@ -375,8 +384,8 @@ class Posts:
 
         Only top-level ``None`` values are dropped from the body, so passing
         e.g. ``x={"thread_parts": None}`` still clears an X thread (reverts
-        the post to single-tweet mode). The same applies to ``bluesky`` and
-        ``mastodon`` thread parts.
+        the post to single-tweet mode). The same applies to ``bluesky``,
+        ``mastodon`` and ``threads`` thread parts.
 
         Updating a scheduled X link post is subject to the same schedule-time
         credit gate as :meth:`create`: if the update would push the
@@ -404,6 +413,7 @@ class Posts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
@@ -499,6 +509,7 @@ class AsyncPosts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
@@ -557,6 +568,7 @@ class AsyncPosts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
@@ -592,6 +604,7 @@ class AsyncPosts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
@@ -628,6 +641,7 @@ class AsyncPosts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
@@ -658,13 +672,15 @@ class AsyncPosts:
         x: Optional[Mapping[str, Any]] = None,
         bluesky: Optional[Mapping[str, Any]] = None,
         mastodon: Optional[Mapping[str, Any]] = None,
+        threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
         Only top-level ``None`` values are dropped from the body, so passing
-        e.g. ``x={"thread_parts": None}`` still clears an X thread.
+        e.g. ``x={"thread_parts": None}`` still clears an X thread. The same
+        applies to ``bluesky``, ``mastodon`` and ``threads`` thread parts.
 
         Updating a scheduled X link post is subject to the same schedule-time
         credit gate as :meth:`create`: if the update would push the
@@ -692,6 +708,7 @@ class AsyncPosts:
             x=x,
             bluesky=bluesky,
             mastodon=mastodon,
+            threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
         )
