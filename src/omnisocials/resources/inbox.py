@@ -55,8 +55,9 @@ class Inbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``, ``"tiktok"``, ``"x"``), ``type`` (``"dm"``,
-        ``"comment"``, ``"mention"``), and ``unread``. ``limit`` is 1-100.
+        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``), ``type``
+        (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``. ``limit``
+        is 1-100.
         Uses cursor pagination: pass the previous response's
         ``pagination.next_cursor`` as ``cursor`` to keep paging while
         ``pagination.has_more`` is true.
@@ -156,8 +157,9 @@ class AsyncInbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``, ``"tiktok"``, ``"x"``), ``type`` (``"dm"``,
-        ``"comment"``, ``"mention"``), and ``unread``. ``limit`` is 1-100.
+        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``), ``type``
+        (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``. ``limit``
+        is 1-100.
         Uses cursor pagination: pass the previous response's
         ``pagination.next_cursor`` as ``cursor`` to keep paging while
         ``pagination.has_more`` is true.

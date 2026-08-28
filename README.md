@@ -210,7 +210,7 @@ recent = client.posts.recent_platform(limit=10, platforms=["instagram", "tiktok"
 
 ## Social Inbox
 
-List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok conversations are video comments only (no DMs or mentions) and need the TikTok comments authorization on the channel.
+List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel.
 
 ```python
 conversations = client.inbox.list_conversations(platform="instagram", unread=True)
@@ -224,7 +224,7 @@ client.inbox.mark_read(conversation_id)
 client.inbox.reply(conversation_id, "Thanks for reaching out!")
 ```
 
-`platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, `"tiktok"`, or `"x"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`. TikTok replies are comments only and capped at 150 characters.
+`platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, `"tiktok"`, `"youtube"`, or `"x"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`. TikTok and YouTube replies are comments only; TikTok replies are capped at 150 characters.
 
 ### X DM replies use credits
 
