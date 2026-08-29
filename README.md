@@ -155,6 +155,8 @@ post = client.posts.create(
 
 On update, passing `x={"thread_parts": None}` clears the thread and reverts the post to single-tweet mode (same for `bluesky`, `mastodon` and `threads`). Only top-level `None` values are dropped from request bodies, so nested `None` values like this one are sent as JSON `null`.
 
+Threads posts can also carry a location tag: pass `threads={"location_id": "..."}`, a Threads location id from `client.locations.search(platform="threads", q="...")` (Instagram Place ids are not interchangeable). On a multi-part thread the tag lands on part 1; on update, `threads={"location_id": None}` clears it. Threads location tagging is currently rolling out; until Meta approves the permissions it is disabled on production and calls return a clear error.
+
 ### X link posts use credits
 
 X bills API posts whose text contains a URL at a premium, and OmniSocials passes that fee through as prepaid credits (20 credits per URL-containing tweet; threads billed per part with a link). When a create targets X and the text contains a URL, the response includes a top-level `warnings` list (a sibling of `data`):
@@ -210,7 +212,7 @@ recent = client.posts.recent_platform(limit=10, platforms=["instagram", "tiktok"
 
 ## Social Inbox
 
-List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel.
+List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel. Threads conversations are replies and mentions only (no DMs). Threads inbox is currently rolling out; until Meta approves the permissions it is disabled on production, and it needs a Threads connection with the reply permission.
 
 ```python
 conversations = client.inbox.list_conversations(platform="instagram", unread=True)
@@ -222,9 +224,13 @@ for message in thread["data"]:
 
 client.inbox.mark_read(conversation_id)
 client.inbox.reply(conversation_id, "Thanks for reaching out!")
+
+# Threads only: hide a reply someone left on one of your posts
+# (hide=False unhides; only top-level replies can be hidden)
+client.inbox.hide(thread["data"][0]["id"])
 ```
 
-`platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, `"tiktok"`, `"youtube"`, or `"x"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`. TikTok and YouTube replies are comments only; TikTok replies are capped at 150 characters.
+`platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, `"tiktok"`, `"youtube"`, `"x"`, or `"threads"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`. TikTok and YouTube replies are comments only; TikTok replies are capped at 150 characters.
 
 ### X DM replies use credits
 
@@ -377,7 +383,7 @@ for slot in best["data"]["best_times"]:
     print(slot)
 ```
 
-## Locations (Instagram place tagging)
+## Locations (Instagram and Threads location tagging)
 
 ```python
 results = client.locations.search("Blue Bottle Coffee Oakland")
@@ -389,6 +395,20 @@ client.posts.create(
     channels=["instagram"],
     media_urls=["https://example.com/latte.jpg"],
     location_id=location_id,
+)
+```
+
+Threads locations use their own ids (a Facebook Place id is not a Threads location id) and a different response shape: `{"locations": [...]}` on success, or `{"error": {"code", "message"}}` when unavailable. Search by text, or by coordinates instead of `q`, and pass a result's `id` as `threads.location_id` on the post. Threads location tagging is currently rolling out; until Meta approves the permissions it is disabled on production and calls return a clear error.
+
+```python
+spots = client.locations.search(platform="threads", q="Blue Bottle Coffee Oakland")
+# or around a point: client.locations.search(platform="threads", latitude=37.8115, longitude=-122.2687)
+
+client.posts.create(
+    content="Great coffee here",
+    channels=["threads"],
+    media_urls=["https://example.com/latte.jpg"],
+    threads={"location_id": spots["locations"][0]["id"]},
 )
 ```
 

@@ -55,12 +55,19 @@ class Inbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``), ``type``
-        (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``. ``limit``
-        is 1-100.
-        Uses cursor pagination: pass the previous response's
-        ``pagination.next_cursor`` as ``cursor`` to keep paging while
-        ``pagination.has_more`` is true.
+        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``, ``"threads"``),
+        ``type`` (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``.
+        ``limit`` is 1-100. Uses cursor pagination: pass the previous
+        response's ``pagination.next_cursor`` as ``cursor`` to keep paging
+        while ``pagination.has_more`` is true.
+
+        Threads conversations are ``type`` ``"comment"`` (replies people
+        leave on your Threads posts; ``conversation_id`` looks like
+        ``threads_comment_<rootPostId>``) and ``"mention"``
+        (``threads_mention_<postId>``); there are no Threads DMs. Threads
+        inbox is currently rolling out; until Meta approves the permissions
+        it is disabled on production, and it needs a Threads connection with
+        the reply permission.
         """
         return self._client.request(
             "GET",
@@ -127,6 +134,12 @@ class Inbox:
         X inbox auto-suspended at zero balance; top up and re-enable it in
         the dashboard to resume - DMs that arrive while suspended are not
         recovered).
+
+        Threads replies publish as native Threads replies. Threads inbox is
+        currently rolling out; until Meta approves the permissions it is
+        disabled on production, and it needs a Threads connection with the
+        reply permission: a ``401`` with code ``reauth_required`` means the
+        connection lacks it (reconnect Threads).
         """
         body = _reply_body(
             text=text,
@@ -137,6 +150,33 @@ class Inbox:
             "POST",
             f"/inbox/conversations/{_encode_id(conversation_id)}/reply",
             json=body,
+        )
+
+    def hide(self, message_id: str, *, hide: bool = True) -> Any:
+        """``POST /inbox/messages/{id}/hide`` - hide or unhide a reply
+        someone left on one of your Threads posts, as the post owner
+        (Threads only for now).
+
+        ``hide=True`` (the default) hides the reply, ``hide=False`` unhides
+        it. Only incoming top-level replies can be hidden (Threads does not
+        allow hiding nested replies); the message keeps its place in the
+        conversation. Returns ``{"data": <message>}`` with ``hidden``
+        flipped. Requires the ``inbox:write`` scope.
+
+        Threads inbox is currently rolling out; until Meta approves the
+        permissions it is disabled on production and calls return a clear
+        error. Errors: ``400`` ``unsupported_platform`` (not an incoming
+        Threads reply, or Threads inbox not available yet), ``400``
+        ``not_hideable`` (nested reply or Threads refused), ``401``
+        ``reauth_required`` (the Threads connection lacks the reply
+        permission; reconnect Threads), ``404`` ``not_found`` (message not
+        in this workspace) or ``account_not_connected`` (no Threads
+        account).
+        """
+        return self._client.request(
+            "POST",
+            f"/inbox/messages/{_encode_id(message_id)}/hide",
+            json={"hide": hide},
         )
 
 
@@ -157,12 +197,19 @@ class AsyncInbox:
         comments, mentions) across connected platforms, newest activity first.
 
         Filter by ``platform`` (``"instagram"``, ``"facebook"``,
-        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``), ``type``
-        (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``. ``limit``
-        is 1-100.
-        Uses cursor pagination: pass the previous response's
-        ``pagination.next_cursor`` as ``cursor`` to keep paging while
-        ``pagination.has_more`` is true.
+        ``"linkedin"``, ``"tiktok"``, ``"youtube"``, ``"x"``, ``"threads"``),
+        ``type`` (``"dm"``, ``"comment"``, ``"mention"``), and ``unread``.
+        ``limit`` is 1-100. Uses cursor pagination: pass the previous
+        response's ``pagination.next_cursor`` as ``cursor`` to keep paging
+        while ``pagination.has_more`` is true.
+
+        Threads conversations are ``type`` ``"comment"`` (replies people
+        leave on your Threads posts; ``conversation_id`` looks like
+        ``threads_comment_<rootPostId>``) and ``"mention"``
+        (``threads_mention_<postId>``); there are no Threads DMs. Threads
+        inbox is currently rolling out; until Meta approves the permissions
+        it is disabled on production, and it needs a Threads connection with
+        the reply permission.
         """
         return await self._client.request(
             "GET",
@@ -229,6 +276,12 @@ class AsyncInbox:
         X inbox auto-suspended at zero balance; top up and re-enable it in
         the dashboard to resume - DMs that arrive while suspended are not
         recovered).
+
+        Threads replies publish as native Threads replies. Threads inbox is
+        currently rolling out; until Meta approves the permissions it is
+        disabled on production, and it needs a Threads connection with the
+        reply permission: a ``401`` with code ``reauth_required`` means the
+        connection lacks it (reconnect Threads).
         """
         body = _reply_body(
             text=text,
@@ -239,4 +292,31 @@ class AsyncInbox:
             "POST",
             f"/inbox/conversations/{_encode_id(conversation_id)}/reply",
             json=body,
+        )
+
+    async def hide(self, message_id: str, *, hide: bool = True) -> Any:
+        """``POST /inbox/messages/{id}/hide`` - hide or unhide a reply
+        someone left on one of your Threads posts, as the post owner
+        (Threads only for now).
+
+        ``hide=True`` (the default) hides the reply, ``hide=False`` unhides
+        it. Only incoming top-level replies can be hidden (Threads does not
+        allow hiding nested replies); the message keeps its place in the
+        conversation. Returns ``{"data": <message>}`` with ``hidden``
+        flipped. Requires the ``inbox:write`` scope.
+
+        Threads inbox is currently rolling out; until Meta approves the
+        permissions it is disabled on production and calls return a clear
+        error. Errors: ``400`` ``unsupported_platform`` (not an incoming
+        Threads reply, or Threads inbox not available yet), ``400``
+        ``not_hideable`` (nested reply or Threads refused), ``401``
+        ``reauth_required`` (the Threads connection lacks the reply
+        permission; reconnect Threads), ``404`` ``not_found`` (message not
+        in this workspace) or ``account_not_connected`` (no Threads
+        account).
+        """
+        return await self._client.request(
+            "POST",
+            f"/inbox/messages/{_encode_id(message_id)}/hide",
+            json={"hide": hide},
         )
