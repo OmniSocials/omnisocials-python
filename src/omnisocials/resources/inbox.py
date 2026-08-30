@@ -25,7 +25,7 @@ def _encode_id(conversation_id: str) -> str:
 
 def _reply_body(
     *,
-    text: str,
+    text: Optional[str],
     attachment_url: Optional[str],
     attachment_type: Optional[str],
 ) -> Dict[str, Any]:
@@ -115,7 +115,7 @@ class Inbox:
     def reply(
         self,
         conversation_id: str,
-        text: str,
+        text: Optional[str] = None,
         *,
         attachment_url: Optional[str] = None,
         attachment_type: Optional[str] = None,
@@ -123,9 +123,13 @@ class Inbox:
         """``POST /inbox/conversations/{id}/reply`` - send a reply into the
         conversation (a DM message, or a reply to the comment/mention).
 
-        Optionally attach a single media asset by public URL with
-        ``attachment_url`` + ``attachment_type`` (``"image"``, ``"video"``,
-        ``"audio"``, or ``"file"``). Returns the created outbound message.
+        On Facebook and Instagram DMs, optionally attach a single media asset
+        by public URL with ``attachment_url`` + ``attachment_type``
+        (``"image"``, ``"video"``, ``"audio"``, or ``"file"``); ``text`` is
+        optional when ``attachment_url`` is set (an attachment-only reply is
+        allowed). Other platforms are text-only. Returns the created
+        outbound message, whose ``attachment`` field carries the same shape
+        when the message has media.
 
         X DM replies cost 2 prepaid credits per send, debited from the
         company balance before the send and auto-refunded if the send fails.
@@ -257,7 +261,7 @@ class AsyncInbox:
     async def reply(
         self,
         conversation_id: str,
-        text: str,
+        text: Optional[str] = None,
         *,
         attachment_url: Optional[str] = None,
         attachment_type: Optional[str] = None,
@@ -265,9 +269,13 @@ class AsyncInbox:
         """``POST /inbox/conversations/{id}/reply`` - send a reply into the
         conversation (a DM message, or a reply to the comment/mention).
 
-        Optionally attach a single media asset by public URL with
-        ``attachment_url`` + ``attachment_type`` (``"image"``, ``"video"``,
-        ``"audio"``, or ``"file"``). Returns the created outbound message.
+        On Facebook and Instagram DMs, optionally attach a single media asset
+        by public URL with ``attachment_url`` + ``attachment_type``
+        (``"image"``, ``"video"``, ``"audio"``, or ``"file"``); ``text`` is
+        optional when ``attachment_url`` is set (an attachment-only reply is
+        allowed). Other platforms are text-only. Returns the created
+        outbound message, whose ``attachment`` field carries the same shape
+        when the message has media.
 
         X DM replies cost 2 prepaid credits per send, debited from the
         company balance before the send and auto-refunded if the send fails.

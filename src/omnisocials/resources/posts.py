@@ -443,6 +443,31 @@ class Posts:
         """
         return self._client.request("POST", f"/posts/{post_id}/retry")
 
+    def approve(self, post_id: str) -> Any:
+        """``POST /posts/{id}/approve`` - approve the current step of a
+        post's approval workflow, on behalf of the user who owns this API
+        key. That user must be a listed approver for the workflow's CURRENT
+        step - steps approve in order, so an approver on a later step gets
+        a 403 ``forbidden`` error until earlier steps clear. Only works on a
+        post with ``approval_status: "pending"``. If this is the last step,
+        the post finalizes immediately (``scheduled`` or ``posting``);
+        otherwise it stays ``in_approval`` and the next step's approvers are
+        notified.
+        """
+        return self._client.request("POST", f"/posts/{post_id}/approve")
+
+    def reject(self, post_id: str, comment: Optional[str] = None) -> Any:
+        """``POST /posts/{id}/reject`` - reject a post's approval workflow,
+        on behalf of the user who owns this API key. Same approver
+        requirement as :meth:`approve`. Unlike approval, a rejection stops
+        the WHOLE workflow immediately (not just the current step) - the
+        post's status becomes ``rejected``. ``comment`` is optional and,
+        when given, is shown to the requester and other approvers in the
+        post's review thread.
+        """
+        body = {"comment": comment} if comment else None
+        return self._client.request("POST", f"/posts/{post_id}/reject", json=body)
+
 
 class AsyncPosts:
     def __init__(self, client: "AsyncOmniSocials") -> None:
@@ -737,3 +762,30 @@ class AsyncPosts:
         platform.
         """
         return await self._client.request("POST", f"/posts/{post_id}/retry")
+
+    async def approve(self, post_id: str) -> Any:
+        """``POST /posts/{id}/approve`` - approve the current step of a
+        post's approval workflow, on behalf of the user who owns this API
+        key. That user must be a listed approver for the workflow's CURRENT
+        step - steps approve in order, so an approver on a later step gets
+        a 403 ``forbidden`` error until earlier steps clear. Only works on a
+        post with ``approval_status: "pending"``. If this is the last step,
+        the post finalizes immediately (``scheduled`` or ``posting``);
+        otherwise it stays ``in_approval`` and the next step's approvers are
+        notified.
+        """
+        return await self._client.request("POST", f"/posts/{post_id}/approve")
+
+    async def reject(self, post_id: str, comment: Optional[str] = None) -> Any:
+        """``POST /posts/{id}/reject`` - reject a post's approval workflow,
+        on behalf of the user who owns this API key. Same approver
+        requirement as :meth:`approve`. Unlike approval, a rejection stops
+        the WHOLE workflow immediately (not just the current step) - the
+        post's status becomes ``rejected``. ``comment`` is optional and,
+        when given, is shown to the requester and other approvers in the
+        post's review thread.
+        """
+        body = {"comment": comment} if comment else None
+        return await self._client.request(
+            "POST", f"/posts/{post_id}/reject", json=body
+        )
