@@ -45,6 +45,7 @@ def _create_body(
     hashtag_set_id: Optional[str],
     hashtag_placement: Optional[str],
     hashtag_platforms: Optional[Sequence[str]],
+    approval_workflow_id: Optional[str] = None,
     pinterest: Optional[Mapping[str, Any]],
     youtube: Optional[Mapping[str, Any]],
     instagram: Optional[Mapping[str, Any]],
@@ -79,6 +80,7 @@ def _create_body(
             "hashtag_set_id": hashtag_set_id,
             "hashtag_placement": hashtag_placement,
             "hashtag_platforms": hashtag_platforms,
+            "approval_workflow_id": approval_workflow_id,
             "pinterest": pinterest,
             "youtube": youtube,
             "instagram": instagram,
@@ -218,9 +220,19 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        approval_workflow_id: Optional[str] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
+
+        ``approval_workflow_id`` (a workflow id from
+        ``client.approval_workflows.list()``) routes the post through a saved
+        approval workflow: it is created as ``in_approval``
+        (``approval_status: "pending"``) instead of ``scheduled``, the
+        approvers are notified, and it publishes at ``scheduled_at`` once the
+        last step approves. Requires ``scheduled_at``; not allowed with
+        ``publish_now``. Errors: ``404 workflow_not_found``,
+        ``400 validation_error``.
 
         ``hashtag_set`` (set name, case-insensitive) or ``hashtag_set_id``
         applies a saved hashtag set once at create time; tags already in a
@@ -277,6 +289,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            approval_workflow_id=approval_workflow_id,
         )
         return self._client.request("POST", "/posts/create", json=body)
 
@@ -537,9 +550,19 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        approval_workflow_id: Optional[str] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
+
+        ``approval_workflow_id`` (a workflow id from
+        ``client.approval_workflows.list()``) routes the post through a saved
+        approval workflow: it is created as ``in_approval``
+        (``approval_status: "pending"``) instead of ``scheduled``, the
+        approvers are notified, and it publishes at ``scheduled_at`` once the
+        last step approves. Requires ``scheduled_at``; not allowed with
+        ``publish_now``. Errors: ``404 workflow_not_found``,
+        ``400 validation_error``.
 
         ``hashtag_set`` (set name, case-insensitive) or ``hashtag_set_id``
         applies a saved hashtag set once at create time; tags already in a
@@ -596,6 +619,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            approval_workflow_id=approval_workflow_id,
         )
         return await self._client.request("POST", "/posts/create", json=body)
 

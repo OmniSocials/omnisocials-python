@@ -27,6 +27,7 @@ from .resources.analytics import Analytics, AsyncAnalytics
 from .resources.audio import AsyncAudio, Audio
 from .resources.folders import AsyncFolders, Folders
 from .resources.hashtag_sets import AsyncHashtagSets, HashtagSets
+from .resources.approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .resources.inbox import AsyncInbox, Inbox
 from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
@@ -220,6 +221,7 @@ class OmniSocials(_BaseClient):
         self.media = Media(self)
         self.folders = Folders(self)
         self.hashtag_sets = HashtagSets(self)
+        self.approval_workflows = ApprovalWorkflows(self)
         self.accounts = Accounts(self)
         self.analytics = Analytics(self)
         self.locations = Locations(self)
@@ -313,6 +315,7 @@ class AsyncOmniSocials(_BaseClient):
         self.media = AsyncMedia(self)
         self.folders = AsyncFolders(self)
         self.hashtag_sets = AsyncHashtagSets(self)
+        self.approval_workflows = AsyncApprovalWorkflows(self)
         self.accounts = AsyncAccounts(self)
         self.analytics = AsyncAnalytics(self)
         self.locations = AsyncLocations(self)

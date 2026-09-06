@@ -2,6 +2,7 @@
 
 from .accounts import Accounts, AsyncAccounts
 from .analytics import Analytics, AsyncAnalytics
+from .approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .audio import AsyncAudio, Audio
 from .folders import AsyncFolders, Folders
 from .hashtag_sets import AsyncHashtagSets, HashtagSets
@@ -20,6 +21,8 @@ __all__ = [
     "AsyncFolders",
     "HashtagSets",
     "AsyncHashtagSets",
+    "ApprovalWorkflows",
+    "AsyncApprovalWorkflows",
     "Accounts",
     "AsyncAccounts",
     "Analytics",
