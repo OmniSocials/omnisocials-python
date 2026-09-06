@@ -234,12 +234,31 @@ for message in thread["data"]:
 client.inbox.mark_read(conversation_id)
 client.inbox.reply(conversation_id, "Thanks for reaching out!")
 
-# Threads only: hide a reply someone left on one of your posts
-# (hide=False unhides; only top-level replies can be hidden)
+# Hide a comment someone left on one of your posts (Facebook, Instagram,
+# TikTok, YouTube, Threads). hide=False unhides.
 client.inbox.hide(thread["data"][0]["id"])
+
+# Delete a comment outright (Facebook, Instagram, TikTok; YouTube: hide instead).
+# Replies under it go with it; their ids come back as "removed_reply_ids".
+client.inbox.delete_message(thread["data"][0]["id"])
 ```
 
 `platform` filters by `"instagram"`, `"facebook"`, `"linkedin"`, `"tiktok"`, `"youtube"`, `"x"`, or `"threads"`; `type` filters by `"dm"`, `"comment"`, or `"mention"`. TikTok and YouTube replies are comments only; TikTok replies are capped at 150 characters.
+
+### Work queue: what needs an answer
+
+`inbox.next()` hands out the next conversation that still needs a reply (the customer's latest DM with no reply after it, or an unreplied comment/mention that is not hidden), with the whole thread and the post it belongs to (`post["url"]`, `post["media_type"]`), so a reply can be drafted from one call. Replies typed in the native apps count as answers. Only unread items are served by default, so `mark_read` is the durable way to skip one; `exclude` skips conversation ids for the current session only. Pass `include_next=True` to `reply` to get the following item in the same response. `list_conversations(unanswered=True)` gives the same set as a plain list.
+
+```python
+item = client.inbox.next(platform="instagram")
+while item["data"]:
+    message = item["data"]["message"]
+    print(item["remaining"], "left.", message["sender"]["username"], message["text"])
+    print("post:", item["data"]["conversation"]["post"])
+
+    reply = client.inbox.reply(message["conversation_id"], "Thanks! DM sent.", include_next=True)
+    item = {"data": reply.get("next"), "remaining": reply.get("remaining", 0)}
+```
 
 ### X DM replies use credits
 
