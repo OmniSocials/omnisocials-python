@@ -433,7 +433,7 @@ class Posts:
         return self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
     def delete(self, post_id: str) -> None:
-        """``DELETE /posts/{id}`` - delete a post. Returns ``None`` (204)."""
+        """``DELETE /posts/{id}`` - remove a post from OmniSocials (the live post stays on the platform). Returns ``None`` (204)."""
         return self._client.request("DELETE", f"/posts/{post_id}")
 
     def publish(self, post_id: str) -> Any:
@@ -764,7 +764,7 @@ class AsyncPosts:
         return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
     async def delete(self, post_id: str) -> None:
-        """``DELETE /posts/{id}`` - delete a post. Returns ``None`` (204)."""
+        """``DELETE /posts/{id}`` - remove a post from OmniSocials (the live post stays on the platform). Returns ``None`` (204)."""
         return await self._client.request("DELETE", f"/posts/{post_id}")
 
     async def publish(self, post_id: str) -> Any:
