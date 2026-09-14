@@ -92,10 +92,10 @@ class Inbox:
         Threads conversations are ``type`` ``"comment"`` (replies people
         leave on your Threads posts; ``conversation_id`` looks like
         ``threads_comment_<rootPostId>``) and ``"mention"``
-        (``threads_mention_<postId>``); there are no Threads DMs. Threads
-        inbox is currently rolling out; until Meta approves the permissions
-        it is disabled on production, and it needs a Threads connection with
-        the reply permission.
+        (``threads_mention_<postId>``); there are no Threads DMs. The
+        Threads inbox needs a Threads connection with the reply permissions;
+        connections made before those permissions existed must be
+        reconnected once.
         """
         return self._client.request(
             "GET",
@@ -169,11 +169,10 @@ class Inbox:
         the dashboard to resume - DMs that arrive while suspended are not
         recovered).
 
-        Threads replies publish as native Threads replies. Threads inbox is
-        currently rolling out; until Meta approves the permissions it is
-        disabled on production, and it needs a Threads connection with the
-        reply permission: a ``401`` with code ``reauth_required`` means the
-        connection lacks it (reconnect Threads).
+        Threads replies publish as native Threads replies. The Threads inbox
+        needs a Threads connection with the reply permission: a ``401`` with
+        code ``reauth_required`` means the connection lacks it (connected
+        before it existed; reconnect Threads).
 
         Pass ``include_next=True`` to also get ``"next"`` (the next
         conversation that needs an answer, the same object ``next()``
@@ -221,9 +220,9 @@ class Inbox:
         workspace) or ``account_not_connected``, ``429`` ``quota_exceeded``
         (YouTube's daily API quota is used up; retry after midnight
         Pacific), ``502`` ``platform_error`` (the platform rejected the
-        call). Threads inbox is currently rolling out; until Meta approves
-        the permissions it is disabled on production and Threads calls
-        return a clear error.
+        call). The Threads inbox needs a Threads connection with the reply
+        permissions; a connection made before those permissions existed
+        answers ``401`` ``reauth_required`` until reconnected.
         """
         return self._client.request(
             "POST",
@@ -349,10 +348,10 @@ class AsyncInbox:
         Threads conversations are ``type`` ``"comment"`` (replies people
         leave on your Threads posts; ``conversation_id`` looks like
         ``threads_comment_<rootPostId>``) and ``"mention"``
-        (``threads_mention_<postId>``); there are no Threads DMs. Threads
-        inbox is currently rolling out; until Meta approves the permissions
-        it is disabled on production, and it needs a Threads connection with
-        the reply permission.
+        (``threads_mention_<postId>``); there are no Threads DMs. The
+        Threads inbox needs a Threads connection with the reply permissions;
+        connections made before those permissions existed must be
+        reconnected once.
         """
         return await self._client.request(
             "GET",
@@ -426,11 +425,10 @@ class AsyncInbox:
         the dashboard to resume - DMs that arrive while suspended are not
         recovered).
 
-        Threads replies publish as native Threads replies. Threads inbox is
-        currently rolling out; until Meta approves the permissions it is
-        disabled on production, and it needs a Threads connection with the
-        reply permission: a ``401`` with code ``reauth_required`` means the
-        connection lacks it (reconnect Threads).
+        Threads replies publish as native Threads replies. The Threads inbox
+        needs a Threads connection with the reply permission: a ``401`` with
+        code ``reauth_required`` means the connection lacks it (connected
+        before it existed; reconnect Threads).
 
         Pass ``include_next=True`` to also get ``"next"`` (the next
         conversation that needs an answer, the same object ``next()``
@@ -478,9 +476,9 @@ class AsyncInbox:
         workspace) or ``account_not_connected``, ``429`` ``quota_exceeded``
         (YouTube's daily API quota is used up; retry after midnight
         Pacific), ``502`` ``platform_error`` (the platform rejected the
-        call). Threads inbox is currently rolling out; until Meta approves
-        the permissions it is disabled on production and Threads calls
-        return a clear error.
+        call). The Threads inbox needs a Threads connection with the reply
+        permissions; a connection made before those permissions existed
+        answers ``401`` ``reauth_required`` until reconnected.
         """
         return await self._client.request(
             "POST",
