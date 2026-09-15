@@ -59,6 +59,7 @@ def _create_body(
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
+    video_cover: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -94,6 +95,7 @@ def _create_body(
             "threads": threads,
             "google_business": google_business,
             "linkedin_poll": linkedin_poll,
+            "video_cover": video_cover,
         }
     )
 
@@ -122,6 +124,7 @@ def _update_body(
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
+    video_cover: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -147,6 +150,7 @@ def _update_body(
             "threads": threads,
             "google_business": google_business,
             "linkedin_poll": linkedin_poll,
+            "video_cover": video_cover,
         }
     )
 
@@ -220,6 +224,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
@@ -289,6 +294,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
         )
         return self._client.request("POST", "/posts/create", json=body)
@@ -326,6 +332,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
@@ -363,6 +370,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
         )
         return self._client.request("POST", "/posts/create-and-publish", json=body)
 
@@ -392,6 +400,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -429,6 +438,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
         )
         return self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
@@ -550,6 +560,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
@@ -619,6 +630,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
         )
         return await self._client.request("POST", "/posts/create", json=body)
@@ -656,6 +668,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
@@ -693,6 +706,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
         )
         return await self._client.request(
             "POST", "/posts/create-and-publish", json=body
@@ -724,6 +738,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
+        video_cover: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -760,6 +775,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             linkedin_poll=linkedin_poll,
+            video_cover=video_cover,
         )
         return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
