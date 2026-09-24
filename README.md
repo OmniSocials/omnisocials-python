@@ -247,7 +247,7 @@ client.inbox.delete_message(thread["data"][0]["id"])
 
 ### Work queue: what needs an answer
 
-`inbox.next()` hands out the next conversation that still needs a reply (the customer's latest DM with no reply after it, or an unreplied comment/mention that is not hidden), with the whole thread and the post it belongs to (`post["url"]`, `post["media_type"]`), so a reply can be drafted from one call. Replies typed in the native apps count as answers. Only unread items are served by default, so `mark_read` is the durable way to skip one; `exclude` skips conversation ids for the current session only. Pass `include_next=True` to `reply` to get the following item in the same response. `list_conversations(unanswered=True)` gives the same set as a plain list.
+`inbox.next()` hands out the next conversation that still needs a reply (the customer's latest DM with no reply after it, or an unreplied comment/mention that is not hidden), with the whole thread and the post it belongs to (`post["url"]`, `post["media_type"]`), so a reply can be drafted from one call. DMs that can still be answered come first, then Instagram/Facebook DMs whose 24-hour window has closed (`reply_window["open"]` is `False`: answer those from the native app or mark them read), then comments and mentions, oldest first. Replies typed in the native apps count as answers. Only unread items are served by default, so `mark_read` is the durable way to skip one; `exclude` skips conversation ids for the current session only. Always pass `message_id=message["id"]` to `reply` on comment threads: every comment on a post shares one conversation, and without it the reply goes under the newest comment on the post. Pass `include_next=True` to `reply` to get the following item in the same response. `list_conversations(unanswered=True)` gives the same set as a plain list.
 
 ```python
 item = client.inbox.next(platform="instagram")
@@ -256,7 +256,19 @@ while item["data"]:
     print(item["remaining"], "left.", message["sender"]["username"], message["text"])
     print("post:", item["data"]["conversation"]["post"])
 
-    reply = client.inbox.reply(message["conversation_id"], "Thanks! DM sent.", include_next=True)
+    if not item["data"]["reply_window"]["open"]:
+        # An Instagram/Facebook DM past Meta's 24-hour window: reply() would
+        # raise 422 outside_messaging_window. Answer it in the app, or skip it.
+        client.inbox.mark_read(message["conversation_id"])
+        item = client.inbox.next(platform="instagram")
+        continue
+
+    reply = client.inbox.reply(
+        message["conversation_id"],
+        "Thanks! DM sent.",
+        message_id=message["id"],  # the comment being answered, not the newest one
+        include_next=True,
+    )
     item = {"data": reply.get("next"), "remaining": reply.get("remaining", 0)}
 ```
 
