@@ -308,7 +308,7 @@ media = client.media.upload(file="/path/to/image.jpg", name="hero-shot")
 # file can also be raw bytes or a binary file-like object
 ```
 
-Uploading a PDF splits it into image slides (max 20 pages) and returns `slides` plus a `media_ids` array. Pass all of `media_ids`, in order, to `posts.create` to publish the deck as a carousel (a native swipeable document on LinkedIn, an image carousel elsewhere).
+Uploading a PDF splits it into image slides (max 20 pages) and returns `slides` plus a `media_ids` array. Pass all of `media_ids`, in order, to `posts.create` to publish the deck as a carousel (on LinkedIn a native swipeable document made from the original PDF file, which is kept so text and links stay intact; an image carousel elsewhere). To keep the PDF as ONE library item instead of one item per page, pass `pdf_mode` = `"document"`: the response then has a single `data` item of type `document` (its page images in `pdf.pages`) and `media_ids` holds that one id, which expands into every page at post time.
 
 Every upload response also includes a `compatibility` block listing any connected platforms that would reject the file.
 

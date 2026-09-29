@@ -49,8 +49,11 @@ def _upload_form(
     name: Optional[str],
     folder: Optional[str],
     folder_id: Optional[str],
+    pdf_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
-    return drop_none({"name": name, "folder": folder, "folder_id": folder_id})
+    return drop_none(
+        {"name": name, "folder": folder, "folder_id": folder_id, "pdf_mode": pdf_mode}
+    )
 
 
 class Media:
@@ -89,12 +92,15 @@ class Media:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload`` - multipart upload (max 100MB inline).
 
         ``file`` is raw bytes, a binary file-like object, or a file path.
         A PDF is split into image slides and the response is a PdfUploadResult
-        (``slides`` + ``media_ids``) instead of a single ``data`` item.
+        (``slides`` + ``media_ids``) instead of a single ``data`` item; pass
+        ``pdf_mode="document"`` to keep it as ONE item of type ``document``
+        whose single id in ``media_ids`` expands into every page.
         For files over 100MB use ``upload_from_url`` (up to 1GB) or the
         ``create_upload_url`` presigned flow.
         """
@@ -103,7 +109,7 @@ class Media:
             "POST",
             "/media/upload",
             files={"file": (upload_name, content)},
-            data=_upload_form(name=name, folder=folder, folder_id=folder_id),
+            data=_upload_form(name=name, folder=folder, folder_id=folder_id, pdf_mode=pdf_mode),
         )
 
     def upload_from_url(
@@ -114,6 +120,7 @@ class Media:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload-from-url`` - server-side fetch, up to 1GB.
 
@@ -127,6 +134,7 @@ class Media:
                 "name": name,
                 "folder": folder,
                 "folder_id": folder_id,
+                "pdf_mode": pdf_mode,
             }
         )
         return self._client.request("POST", "/media/upload-from-url", json=body)
@@ -140,6 +148,7 @@ class Media:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload-from-base64`` - upload base64-encoded data
         (without a data URI prefix)."""
@@ -151,6 +160,7 @@ class Media:
                 "name": name,
                 "folder": folder,
                 "folder_id": folder_id,
+                "pdf_mode": pdf_mode,
             }
         )
         return self._client.request("POST", "/media/upload-from-base64", json=body)
@@ -250,6 +260,7 @@ class AsyncMedia:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload`` - multipart upload (max 100MB inline)."""
         upload_name, content = _coerce_file(file, filename)
@@ -257,7 +268,7 @@ class AsyncMedia:
             "POST",
             "/media/upload",
             files={"file": (upload_name, content)},
-            data=_upload_form(name=name, folder=folder, folder_id=folder_id),
+            data=_upload_form(name=name, folder=folder, folder_id=folder_id, pdf_mode=pdf_mode),
         )
 
     async def upload_from_url(
@@ -268,6 +279,7 @@ class AsyncMedia:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload-from-url`` - server-side fetch, up to 1GB."""
         body = drop_none(
@@ -277,6 +289,7 @@ class AsyncMedia:
                 "name": name,
                 "folder": folder,
                 "folder_id": folder_id,
+                "pdf_mode": pdf_mode,
             }
         )
         return await self._client.request("POST", "/media/upload-from-url", json=body)
@@ -290,6 +303,7 @@ class AsyncMedia:
         name: Optional[str] = None,
         folder: Optional[str] = None,
         folder_id: Optional[str] = None,
+        pdf_mode: Optional[str] = None,
     ) -> Any:
         """``POST /media/upload-from-base64`` - upload base64-encoded data."""
         body = drop_none(
@@ -300,6 +314,7 @@ class AsyncMedia:
                 "name": name,
                 "folder": folder,
                 "folder_id": folder_id,
+                "pdf_mode": pdf_mode,
             }
         )
         return await self._client.request(
