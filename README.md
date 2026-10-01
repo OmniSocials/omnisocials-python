@@ -219,6 +219,18 @@ client.posts.reject("123", comment="Wrong CTA link, please fix.")  # reject and 
 
 Only works on a post with `approval_status: "pending"` (`status: "in_approval"`). Both act on behalf of the user who owns the API key, who must be a listed approver for the workflow's CURRENT step - steps approve in order, so being an approver on a later step is not enough yet (raises a 403 `PermissionDeniedError`). Approving the last step finalizes the post (`scheduled` or `posting`); rejecting stops the whole workflow immediately, not just the current step.
 
+### Read the approval review
+
+```python
+review = client.posts.get_approval("123")["data"]
+if review["status"] == "rejected" and review["rejection"]:
+    print(f'Rejected by {review["rejection"]["by"]["name"]}: {review["rejection"]["reason"]}')
+for step in review["steps"]:
+    print(step["order"], step["name"], step["status"], [(a["name"], a["status"]) for a in step["approvers"]])
+```
+
+`get_approval` returns the review of a post that went through an approval workflow: `status` (`none`, `pending`, `approved`, `rejected`), the `workflow`, who requested it and when, `current_step` (the step the post waits on, `None` when the review ended), every step with its approvers and their decisions, the `rejection` (`by`, `reason`, `at`, `step`; `None` when nobody rejected) and the `comments` thread, oldest first. A post without an approval workflow returns `status: "none"` with empty `steps` and `comments`. Read-only; needs the `posts:read` scope.
+
 ## Social Inbox
 
 List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel. Threads conversations are replies and mentions only (no DMs). Threads inbox is currently rolling out; until Meta approves the permissions it is disabled on production, and it needs a Threads connection with the reply permission.
@@ -454,7 +466,7 @@ client.posts.create(
 
 ## Webhooks
 
-Subscribe to `post.scheduled`, `post.published`, and `post.failed` events:
+Subscribe to `post.scheduled`, `post.published`, `post.failed`, `post.approved`, and `post.rejected` events. `post.approved` fires when the last step of a post's approval workflow is approved, `post.rejected` when an approver rejects the post (it will not publish). These two carry `data["approval"]` with `status`, `decided_by` (the approver's user id) and `reason` (`None` on `post.approved`), and an empty `data["targets"]`.
 
 ```python
 webhook = client.webhooks.create(
@@ -497,6 +509,8 @@ async def omnisocials_webhook(
     if event["type"] == "post.published":
         for target in event["data"]["targets"]:
             print(target["platform"], target["status"], target.get("native_post_id"))
+    elif event["type"] == "post.rejected":
+        print("Rejected:", event["data"]["post_id"], event["data"]["approval"]["reason"])
     return {"ok": True}
 ```
 

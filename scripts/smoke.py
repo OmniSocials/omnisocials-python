@@ -59,6 +59,9 @@ EXPECTED = {
         "update",
         "delete",
         "publish",
+        "approve",
+        "reject",
+        "get_approval",
     ],
     "media": [
         "list",
@@ -214,6 +217,32 @@ def check_webhook_verification():
 
     parsed_bytes = verify_webhook_signature(raw_body.encode("utf-8"), signature, secret)
     ok(parsed_bytes == event, "valid signature verifies with bytes payload")
+
+    rejected = {
+        "id": "e7c9a1b2-3d4e-5f6a-7b8c-9d0e1f2a3b4d",
+        "type": "post.rejected",
+        "created_at": "2026-10-02T09:00:05.000Z",
+        "data": {
+            "post_id": "123456",
+            "workspace_id": 789,
+            "status": "rejected",
+            "targets": [],
+            "approval": {
+                "status": "rejected",
+                "decided_by": "c4a09e1d",
+                "reason": "Wrong product photo",
+            },
+        },
+    }
+    rejected_body = json.dumps(rejected)
+    parsed_rejected = verify_webhook_signature(
+        rejected_body, build_signature(secret, timestamp, rejected_body), secret
+    )
+    ok(
+        parsed_rejected["type"] == "post.rejected"
+        and parsed_rejected["data"]["approval"] == rejected["data"]["approval"],
+        "post.rejected event keeps its approval object",
+    )
 
     tampered = raw_body.replace("posted", "hacked")
     try:

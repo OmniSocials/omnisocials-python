@@ -1,5 +1,5 @@
 """Webhooks resource: manage event subscriptions (post.scheduled,
-post.published, post.failed)."""
+post.published, post.failed, post.approved, post.rejected)."""
 
 from __future__ import annotations
 
@@ -29,8 +29,9 @@ class Webhooks:
         """``POST /webhooks`` - create a webhook subscription.
 
         ``url`` must be HTTPS. ``events`` is a non-empty subset of
-        ``post.scheduled``, ``post.published``, ``post.failed``. The signing
-        ``secret`` is only returned once, in this response - store it.
+        ``post.scheduled``, ``post.published``, ``post.failed``,
+        ``post.approved``, ``post.rejected``. The signing ``secret`` is only
+        returned once, in this response - store it.
         """
         return self._client.request(
             "POST", "/webhooks", json={"url": url, "events": list(events)}

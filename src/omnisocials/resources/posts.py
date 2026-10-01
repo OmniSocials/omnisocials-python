@@ -491,6 +491,23 @@ class Posts:
         body = {"comment": comment} if comment else None
         return self._client.request("POST", f"/posts/{post_id}/reject", json=body)
 
+    def get_approval(self, post_id: str) -> Any:
+        """``GET /posts/{id}/approval`` - the approval review of a post:
+        every step with its approvers and their decisions, the rejection
+        with its reason, and the comment thread. Use it when
+        ``approval_status`` is ``rejected`` to learn who rejected the post
+        and why, or while it is ``pending`` to see who the post waits for.
+
+        ``data`` carries ``post_id``, ``status`` (``none``, ``pending``,
+        ``approved``, ``rejected``), ``workflow``, ``requested_by``,
+        ``requested_at``, ``current_step``, ``steps``, ``rejection`` and
+        ``comments`` (oldest first). A post without an approval workflow
+        returns ``status: "none"`` with the object fields ``None`` and
+        empty ``steps`` and ``comments``. Read-only; requires the
+        ``posts:read`` scope.
+        """
+        return self._client.request("GET", f"/posts/{post_id}/approval")
+
 
 class AsyncPosts:
     def __init__(self, client: "AsyncOmniSocials") -> None:
@@ -829,3 +846,20 @@ class AsyncPosts:
         return await self._client.request(
             "POST", f"/posts/{post_id}/reject", json=body
         )
+
+    async def get_approval(self, post_id: str) -> Any:
+        """``GET /posts/{id}/approval`` - the approval review of a post:
+        every step with its approvers and their decisions, the rejection
+        with its reason, and the comment thread. Use it when
+        ``approval_status`` is ``rejected`` to learn who rejected the post
+        and why, or while it is ``pending`` to see who the post waits for.
+
+        ``data`` carries ``post_id``, ``status`` (``none``, ``pending``,
+        ``approved``, ``rejected``), ``workflow``, ``requested_by``,
+        ``requested_at``, ``current_step``, ``steps``, ``rejection`` and
+        ``comments`` (oldest first). A post without an approval workflow
+        returns ``status: "none"`` with the object fields ``None`` and
+        empty ``steps`` and ``comments``. Read-only; requires the
+        ``posts:read`` scope.
+        """
+        return await self._client.request("GET", f"/posts/{post_id}/approval")
