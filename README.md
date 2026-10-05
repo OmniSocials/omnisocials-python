@@ -233,11 +233,11 @@ for step in review["steps"]:
 
 ## Social Inbox
 
-List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel. Threads conversations are replies and mentions only (no DMs). Threads inbox is currently rolling out; until Meta approves the permissions it is disabled on production, and it needs a Threads connection with the reply permission.
+List conversations across connected platforms, read a thread, and reply. Requires an API key with the opt-in `inbox:read` / `inbox:write` scopes. TikTok and YouTube conversations are video comments only (no DMs or mentions); TikTok needs the TikTok comments authorization on the channel. Threads conversations are replies and mentions only (no DMs). The Threads inbox needs a Threads connection with the reply permission: a Threads account connected before 2026-09-14 needs a one-time reconnect in the dashboard (until then replies and hides answer 401 `reauth_required`).
 
 ```python
 conversations = client.inbox.list_conversations(platform="instagram", unread=True)
-conversation_id = conversations["data"][0]["id"]
+conversation_id = conversations["data"][0]["conversation_id"]
 
 thread = client.inbox.get_messages(conversation_id)
 for message in thread["data"]:
