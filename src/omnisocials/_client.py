@@ -31,12 +31,13 @@ from .resources.approval_workflows import ApprovalWorkflows, AsyncApprovalWorkfl
 from .resources.inbox import AsyncInbox, Inbox
 from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
+from .resources.pinterest import AsyncPinterest, Pinterest
 from .resources.posts import AsyncPosts, Posts
 from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -226,6 +227,7 @@ class OmniSocials(_BaseClient):
         self.analytics = Analytics(self)
         self.locations = Locations(self)
         self.audio = Audio(self)
+        self.pinterest = Pinterest(self)
         self.inbox = Inbox(self)
         self.webhooks = Webhooks(self)
 
@@ -320,6 +322,7 @@ class AsyncOmniSocials(_BaseClient):
         self.analytics = AsyncAnalytics(self)
         self.locations = AsyncLocations(self)
         self.audio = AsyncAudio(self)
+        self.pinterest = AsyncPinterest(self)
         self.inbox = AsyncInbox(self)
         self.webhooks = AsyncWebhooks(self)
 

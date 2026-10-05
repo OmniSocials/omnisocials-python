@@ -9,6 +9,7 @@ from .hashtag_sets import AsyncHashtagSets, HashtagSets
 from .inbox import AsyncInbox, Inbox
 from .locations import AsyncLocations, Locations
 from .media import AsyncMedia, Media
+from .pinterest import AsyncPinterest, Pinterest
 from .posts import AsyncPosts, Posts
 from .webhooks import AsyncWebhooks, Webhooks
 
@@ -31,6 +32,8 @@ __all__ = [
     "AsyncLocations",
     "Audio",
     "AsyncAudio",
+    "Pinterest",
+    "AsyncPinterest",
     "Inbox",
     "AsyncInbox",
     "Webhooks",

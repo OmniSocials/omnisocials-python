@@ -246,6 +246,16 @@ class Posts:
         ``"caption_append"`` (default) or ``"first_comment"``;
         ``hashtag_platforms`` restricts the tags to a subset of ``channels``.
 
+        ``pinterest["product_tags"]`` tags products on the Pin: up to 24
+        product Pins of the connected Pinterest account, each as a Pin id
+        string (see ``client.pinterest.list_products()``) or a Pin link.
+        Products of other merchants cannot be tagged. The tags are added
+        right after the Pin is published; a product Pinterest refuses never
+        fails the post, and the outcome is returned on the post as
+        ``pinterest["product_tags_result"]`` (``requested``, ``tagged``,
+        ``skipped``, ``error``). More than 24 entries or an invalid entry
+        returns ``400 validation_error``.
+
         When the post targets X and its text (or any thread part) contains a
         URL, the response includes a top-level ``warnings`` list (sibling of
         ``data``) with a ``x_url_post_credits`` entry carrying
@@ -408,6 +418,10 @@ class Posts:
         e.g. ``x={"thread_parts": None}`` still clears an X thread (reverts
         the post to single-tweet mode). The same applies to ``bluesky``,
         ``mastodon`` and ``threads`` thread parts.
+
+        ``pinterest`` replaces the stored Pinterest options wholesale, so
+        leave ``product_tags`` out (or send ``[]``) to remove the product
+        tags.
 
         Updating a scheduled X link post is subject to the same schedule-time
         credit gate as :meth:`create`: if the update would push the
@@ -599,6 +613,16 @@ class AsyncPosts:
         ``"caption_append"`` (default) or ``"first_comment"``;
         ``hashtag_platforms`` restricts the tags to a subset of ``channels``.
 
+        ``pinterest["product_tags"]`` tags products on the Pin: up to 24
+        product Pins of the connected Pinterest account, each as a Pin id
+        string (see ``client.pinterest.list_products()``) or a Pin link.
+        Products of other merchants cannot be tagged. The tags are added
+        right after the Pin is published; a product Pinterest refuses never
+        fails the post, and the outcome is returned on the post as
+        ``pinterest["product_tags_result"]`` (``requested``, ``tagged``,
+        ``skipped``, ``error``). More than 24 entries or an invalid entry
+        returns ``400 validation_error``.
+
         When the post targets X and its text (or any thread part) contains a
         URL, the response includes a top-level ``warnings`` list (sibling of
         ``data``) with a ``x_url_post_credits`` entry carrying
@@ -762,6 +786,10 @@ class AsyncPosts:
         Only top-level ``None`` values are dropped from the body, so passing
         e.g. ``x={"thread_parts": None}`` still clears an X thread. The same
         applies to ``bluesky``, ``mastodon`` and ``threads`` thread parts.
+
+        ``pinterest`` replaces the stored Pinterest options wholesale, so
+        leave ``product_tags`` out (or send ``[]``) to remove the product
+        tags.
 
         Updating a scheduled X link post is subject to the same schedule-time
         credit gate as :meth:`create`: if the update would push the
