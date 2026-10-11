@@ -68,7 +68,11 @@ class Media:
         search: Optional[str] = None,
         folder_id: Optional[str] = None,
     ) -> Any:
-        """``GET /media`` - list library files."""
+        """``GET /media`` - list library files.
+
+        Each item carries ``width`` and ``height`` (pixels; ``None`` for
+        videos and older files).
+        """
         return self._client.request(
             "GET",
             "/media",
@@ -187,6 +191,18 @@ class Media:
 
         Provide one of: a public ``url``, an existing ``media_id``, or
         ``size_bytes`` + ``mime``.
+
+        The result carries ``file`` (``size_bytes``, ``mime``,
+        ``size_known``, ``width``, ``height``; the pixel size is known for
+        library images, ``None`` otherwise), ``connected_platforms``,
+        ``compatible``, ``warnings``, ``summary`` and ``fit``: one entry per
+        connected channel with a fit rule for an IMAGE as a feed post
+        (``platform``, ``display_name``, ``fits``, ``ratio``, ``shown`` =
+        ``"whole"`` | ``"cut"``, ``target``, ``default_action`` = ``"crop"``
+        | ``"keep"`` | ``None``, ``message``). ``fits: False`` = the ratio is
+        outside the window the channel shows uncropped; ``default_action`` is
+        what a post create does unless the post's ``media_fit`` says
+        otherwise. Empty for videos and unknown sizes.
         """
         body = drop_none(
             {
@@ -236,7 +252,11 @@ class AsyncMedia:
         search: Optional[str] = None,
         folder_id: Optional[str] = None,
     ) -> Any:
-        """``GET /media`` - list library files."""
+        """``GET /media`` - list library files.
+
+        Each item carries ``width`` and ``height`` (pixels; ``None`` for
+        videos and older files).
+        """
         return await self._client.request(
             "GET",
             "/media",
@@ -333,7 +353,10 @@ class AsyncMedia:
         size_bytes: Optional[int] = None,
         mime: Optional[str] = None,
     ) -> Any:
-        """``POST /media/check`` - preflight platform compatibility."""
+        """``POST /media/check`` - preflight platform compatibility.
+
+        See :meth:`Media.check` for the ``fit`` list and ``file`` size fields.
+        """
         body = drop_none(
             {
                 "url": url,

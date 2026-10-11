@@ -80,6 +80,53 @@ post = client.posts.create_and_publish(
 )
 ```
 
+### Planned drafts
+
+Pass `draft=True` with `scheduled_at` to store the post as a draft that keeps its time. It shows on the dashboard calendar at that slot with a dashed outline and the scheduler never publishes it: a person schedules it from the composer, or you do with `update` and `draft=False`. Use it when an agent proposes a slot that a human should confirm. `draft=True` is not allowed with `publish_now` or `approval_workflow_id` (`400 validation_error`). On `update`, `draft=False` without `scheduled_at` is a `400 validation_error` when the draft has no time or its time is in the past (pass a new `scheduled_at` then), and `draft=True` on a scheduled post unschedules it while keeping the time.
+
+```python
+proposal = client.posts.create(
+    content="Proposed for Friday morning",
+    channels=["instagram", "linkedin"],
+    scheduled_at="2026-08-01T09:00:00Z",
+    draft=True,
+)
+print(proposal["data"]["status"], proposal["data"]["schedule_at"])  # draft, the time is kept
+
+# The human agrees: schedule it at the time it already carries
+client.posts.update(proposal["data"]["id"], draft=False)
+```
+
+### Comment-to-DM automations
+
+Answer a keyword in an Instagram comment with a DM, once per person, with an optional public reply under the comment. Pass `comment_dm_automation=` on `create` (Instagram must be in `channels`) and the automation is bound to that post; it starts listening once the post is live. Needs the opt-in `automations:write` scope on the key. `client.automations` manages the automations themselves (`list`, `get`, `create`, `update`, `delete`) and reads their activity (`list_events`, `automations:read`). On `update`, `comment_dm_automation=` as a dict replaces the post's automation and an explicit `None` removes it. Instagram rules: one private reply per comment, within 7 days; OmniSocials caps sends at 180 DMs an hour per account.
+
+```python
+post = client.posts.create(
+    content="Comment GUIDE and I will send you the link",
+    channels=["instagram"],
+    scheduled_at="2026-08-01T09:00:00Z",
+    media_urls=["https://example.com/guide-cover.jpg"],
+    comment_dm_automation={
+        "trigger": {"keywords": ["guide"], "match": "word"},
+        "actions": {
+            "dm": {"text": "Here is the guide: https://example.com/guide"},
+            "public_reply": {"enabled": True, "variations": ["Sent you a DM!", "Check your inbox"]},
+        },
+        "limits": {"max_sends": 500},
+    },
+)
+automation_id = post["data"]["comment_dm_automation"]["id"]
+
+# Later: who was answered, and why someone was skipped
+events = client.automations.list_events(automation_id, outcome="sent")
+print(events["counts"])  # {"sent": 12, "skipped": 3}
+for event in events["data"]:
+    print(event["person"]["username"], event["outcome"], event["reason_label"])
+```
+
+The events response is `{"data", "counts", "pagination"}`, not the plain list: `counts` is the number of events per outcome (`sent`, `skipped`, `failed`, `pending`). An automation can also listen on a post published outside OmniSocials (`client.automations.create(instagram_media_id=..., actions=...)`), on the next post the workspace publishes (`trigger={"scope": "next_post"}`) or on every post (`"scope": "any"`), and on DMs and story replies (`trigger={"kinds": ["dm", "story_reply"], ...}`).
+
 ### Per-media alt text
 
 Every `media_urls` / `media_ids` entry accepts either a plain string or a dict with an `alt` accessibility description (max 1500 chars). Alt text is delivered to Mastodon (media description), Bluesky (embed alt), X (photos and GIFs), Pinterest (pin alt text), Instagram (images), and LinkedIn (images). Strings and dicts can be mixed, and the same shape works in per-platform mappings and `thread_parts` media.

@@ -4,6 +4,7 @@ from .accounts import Accounts, AsyncAccounts
 from .analytics import Analytics, AsyncAnalytics
 from .approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .audio import AsyncAudio, Audio
+from .automations import AsyncAutomations, Automations
 from .folders import AsyncFolders, Folders
 from .hashtag_sets import AsyncHashtagSets, HashtagSets
 from .inbox import AsyncInbox, Inbox
@@ -34,6 +35,8 @@ __all__ = [
     "AsyncAudio",
     "Pinterest",
     "AsyncPinterest",
+    "Automations",
+    "AsyncAutomations",
     "Inbox",
     "AsyncInbox",
     "Webhooks",

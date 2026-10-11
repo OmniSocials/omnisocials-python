@@ -80,6 +80,7 @@ EXPECTED = {
     "analytics": ["post", "posts", "overview", "accounts", "best_times"],
     "locations": ["search", "validate"],
     "pinterest": ["list_products", "validate_product"],
+    "automations": ["list", "get", "create", "update", "delete", "list_events"],
     "webhooks": ["list", "get", "create", "update", "delete", "rotate_secret"],
 }
 

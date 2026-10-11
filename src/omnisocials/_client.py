@@ -25,6 +25,7 @@ from ._utils import NOT_GIVEN, NotGiven
 from .resources.accounts import Accounts, AsyncAccounts
 from .resources.analytics import Analytics, AsyncAnalytics
 from .resources.audio import AsyncAudio, Audio
+from .resources.automations import AsyncAutomations, Automations
 from .resources.folders import AsyncFolders, Folders
 from .resources.hashtag_sets import AsyncHashtagSets, HashtagSets
 from .resources.approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
@@ -37,7 +38,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -228,6 +229,7 @@ class OmniSocials(_BaseClient):
         self.locations = Locations(self)
         self.audio = Audio(self)
         self.pinterest = Pinterest(self)
+        self.automations = Automations(self)
         self.inbox = Inbox(self)
         self.webhooks = Webhooks(self)
 
@@ -323,6 +325,7 @@ class AsyncOmniSocials(_BaseClient):
         self.locations = AsyncLocations(self)
         self.audio = AsyncAudio(self)
         self.pinterest = AsyncPinterest(self)
+        self.automations = AsyncAutomations(self)
         self.inbox = AsyncInbox(self)
         self.webhooks = AsyncWebhooks(self)
 

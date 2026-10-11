@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence, Union
 
-from .._utils import drop_none, join_list
+from .._utils import NOT_GIVEN, NotGiven, drop_none, join_list
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -46,6 +46,8 @@ def _create_body(
     hashtag_placement: Optional[str],
     hashtag_platforms: Optional[Sequence[str]],
     approval_workflow_id: Optional[str] = None,
+    draft: Optional[bool] = None,
+    media_fit: Optional[Mapping[str, str]] = None,
     pinterest: Optional[Mapping[str, Any]],
     youtube: Optional[Mapping[str, Any]],
     instagram: Optional[Mapping[str, Any]],
@@ -60,6 +62,7 @@ def _create_body(
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
+    comment_dm_automation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -82,6 +85,8 @@ def _create_body(
             "hashtag_placement": hashtag_placement,
             "hashtag_platforms": hashtag_platforms,
             "approval_workflow_id": approval_workflow_id,
+            "draft": draft,
+            "media_fit": media_fit,
             "pinterest": pinterest,
             "youtube": youtube,
             "instagram": instagram,
@@ -96,6 +101,7 @@ def _create_body(
             "google_business": google_business,
             "linkedin_poll": linkedin_poll,
             "video_cover": video_cover,
+            "comment_dm_automation": comment_dm_automation,
         }
     )
 
@@ -125,11 +131,16 @@ def _update_body(
     google_business: Optional[Mapping[str, Any]],
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
+    draft: Optional[bool] = None,
+    media_fit: Optional[Mapping[str, str]] = None,
+    comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
 ) -> Dict[str, Any]:
-    return drop_none(
+    body = drop_none(
         {
             "content": content,
             "scheduled_at": scheduled_at,
+            "draft": draft,
+            "media_fit": media_fit,
             "channels": channels,
             "media_ids": media_ids,
             "media_urls": media_urls,
@@ -153,6 +164,11 @@ def _update_body(
             "video_cover": video_cover,
         }
     )
+    # An explicit None removes the post's automation, so it must survive
+    # drop_none; NOT_GIVEN (the default) leaves it untouched.
+    if not isinstance(comment_dm_automation, NotGiven):
+        body["comment_dm_automation"] = comment_dm_automation
+    return body
 
 
 class Posts:
@@ -226,9 +242,21 @@ class Posts:
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
+        draft: Optional[bool] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
+
+        ``draft=True`` with ``scheduled_at`` stores a planned draft: the post
+        is ``draft`` and keeps that time, shows on the dashboard calendar at
+        that slot with a dashed outline, and the scheduler never publishes it.
+        A person schedules it from the composer, or you do with
+        :meth:`update` and ``draft=False``. Use it when an agent proposes a
+        slot that a human should confirm. Not allowed with ``publish_now`` or
+        ``approval_workflow_id`` (``400 validation_error``). Without
+        ``scheduled_at`` it changes nothing.
 
         ``approval_workflow_id`` (a workflow id from
         ``client.approval_workflows.list()``) routes the post through a saved
@@ -271,6 +299,32 @@ class Posts:
         ``credits_required``, ``credits_balance``, and
         ``credits_reserved``). Drafts (no ``scheduled_at``) are never gated,
         and posts publishing before 2026-08-14 are never gated.
+
+        ``media_fit`` is the image fit per channel for feed images whose
+        ratio is outside what a channel shows uncropped: a mapping of
+        platform id (``"instagram"``, ``"pinterest"``, ...) to ``"auto"``,
+        ``"crop"`` or ``"keep"``. ``auto`` (default): Instagram crops a tall
+        or wide image to 4:5 / 1.91:1 around the subject (Instagram cuts it
+        to that window anyway and Meta cannot boost a feed post outside it);
+        Pinterest keeps a Pin taller than 2:3 and reports it. ``crop`` /
+        ``keep`` force it per channel. Every decision comes back in the same
+        ``warnings`` list with ``code: "image_fit"`` (``action`` is
+        ``cropped``, ``kept`` or ``crop_failed``, with ``platform``,
+        ``media_url``, ``ratio``, ``target`` and ``crop_url``).
+
+        ``comment_dm_automation`` binds a comment-to-DM automation to the
+        post (Instagram must be in ``channels``): a keyword in a comment is
+        answered with a DM, once per person, with an optional public reply
+        under the comment. Shape: ``{"trigger": {"keywords": ["guide"],
+        "match": "word"}, "actions": {"dm": {"text": "..."}, "public_reply":
+        {"enabled": True, "variations": [...]}}, "limits": {"max_sends":
+        500}}`` (see ``client.automations.create()`` for the fields). Needs
+        the ``automations:write`` scope on the key (``403
+        insufficient_scope``, checked before anything else); a bad object is
+        a ``400 validation_error`` whose message starts with
+        ``comment_dm_automation: ``. The response then carries
+        ``data["comment_dm_automation"]`` (the automation, with ``post``
+        ``None``); it starts listening once the post is live on Instagram.
         """
         body = _create_body(
             content=content,
@@ -306,6 +360,9 @@ class Posts:
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
+            draft=draft,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return self._client.request("POST", "/posts/create", json=body)
 
@@ -343,10 +400,14 @@ class Posts:
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
-        See :meth:`create` for the ``warnings`` list on X link posts.
+        See :meth:`create` for the ``warnings`` list on X link posts, the
+        ``image_fit`` entries steered by ``media_fit`` and
+        ``comment_dm_automation``.
         """
         body = _create_body(
             content=content,
@@ -381,6 +442,8 @@ class Posts:
             google_business=google_business,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return self._client.request("POST", "/posts/create-and-publish", json=body)
 
@@ -411,8 +474,25 @@ class Posts:
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
+        draft: Optional[bool] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
+
+        ``draft=False`` without ``scheduled_at`` schedules a planned draft at
+        the ``scheduled_at`` it already carries (``400 validation_error`` when
+        it has none or it is in the past). ``draft=True`` without
+        ``scheduled_at`` unschedules a scheduled post: it keeps its time and
+        stays on the calendar as a dashed draft, nothing publishes; a post
+        waiting for approval leaves its workflow. ``draft=True`` with
+        ``scheduled_at`` moves the time and keeps (or makes) the post a draft.
+
+        ``media_fit`` (same shape as on :meth:`create`) alone re-decides the
+        stored images: ``"keep"`` gives the original back, ``"crop"`` crops
+        an image that was kept. Like :meth:`create`, the response can carry a
+        top-level ``warnings`` list with ``image_fit`` entries when the update
+        changes the images or ``media_fit``.
 
         Only top-level ``None`` values are dropped from the body, so passing
         e.g. ``x={"thread_parts": None}`` still clears an X thread (reverts
@@ -428,6 +508,11 @@ class Posts:
         company's total reserved credits (across every scheduled X link
         post) past its balance, the request is rejected with
         ``402 x_credits_insufficient`` before anything changes.
+
+        ``comment_dm_automation`` (same shape as on :meth:`create`) as a
+        mapping replaces the post's comment-to-DM automation, an explicit
+        ``None`` removes it, and leaving it out keeps it. Needs the
+        ``automations:write`` scope.
         """
         body = _update_body(
             content=content,
@@ -453,6 +538,9 @@ class Posts:
             google_business=google_business,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
+            draft=draft,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
@@ -593,9 +681,21 @@ class AsyncPosts:
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
+        draft: Optional[bool] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
+
+        ``draft=True`` with ``scheduled_at`` stores a planned draft: the post
+        is ``draft`` and keeps that time, shows on the dashboard calendar at
+        that slot with a dashed outline, and the scheduler never publishes it.
+        A person schedules it from the composer, or you do with
+        :meth:`update` and ``draft=False``. Use it when an agent proposes a
+        slot that a human should confirm. Not allowed with ``publish_now`` or
+        ``approval_workflow_id`` (``400 validation_error``). Without
+        ``scheduled_at`` it changes nothing.
 
         ``approval_workflow_id`` (a workflow id from
         ``client.approval_workflows.list()``) routes the post through a saved
@@ -638,6 +738,32 @@ class AsyncPosts:
         ``credits_required``, ``credits_balance``, and
         ``credits_reserved``). Drafts (no ``scheduled_at``) are never gated,
         and posts publishing before 2026-08-14 are never gated.
+
+        ``media_fit`` is the image fit per channel for feed images whose
+        ratio is outside what a channel shows uncropped: a mapping of
+        platform id (``"instagram"``, ``"pinterest"``, ...) to ``"auto"``,
+        ``"crop"`` or ``"keep"``. ``auto`` (default): Instagram crops a tall
+        or wide image to 4:5 / 1.91:1 around the subject (Instagram cuts it
+        to that window anyway and Meta cannot boost a feed post outside it);
+        Pinterest keeps a Pin taller than 2:3 and reports it. ``crop`` /
+        ``keep`` force it per channel. Every decision comes back in the same
+        ``warnings`` list with ``code: "image_fit"`` (``action`` is
+        ``cropped``, ``kept`` or ``crop_failed``, with ``platform``,
+        ``media_url``, ``ratio``, ``target`` and ``crop_url``).
+
+        ``comment_dm_automation`` binds a comment-to-DM automation to the
+        post (Instagram must be in ``channels``): a keyword in a comment is
+        answered with a DM, once per person, with an optional public reply
+        under the comment. Shape: ``{"trigger": {"keywords": ["guide"],
+        "match": "word"}, "actions": {"dm": {"text": "..."}, "public_reply":
+        {"enabled": True, "variations": [...]}}, "limits": {"max_sends":
+        500}}`` (see ``client.automations.create()`` for the fields). Needs
+        the ``automations:write`` scope on the key (``403
+        insufficient_scope``, checked before anything else); a bad object is
+        a ``400 validation_error`` whose message starts with
+        ``comment_dm_automation: ``. The response then carries
+        ``data["comment_dm_automation"]`` (the automation, with ``post``
+        ``None``); it starts listening once the post is live on Instagram.
         """
         body = _create_body(
             content=content,
@@ -673,6 +799,9 @@ class AsyncPosts:
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
+            draft=draft,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return await self._client.request("POST", "/posts/create", json=body)
 
@@ -710,10 +839,14 @@ class AsyncPosts:
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Optional[Mapping[str, Any]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
-        See :meth:`create` for the ``warnings`` list on X link posts.
+        See :meth:`create` for the ``warnings`` list on X link posts, the
+        ``image_fit`` entries steered by ``media_fit`` and
+        ``comment_dm_automation``.
         """
         body = _create_body(
             content=content,
@@ -748,6 +881,8 @@ class AsyncPosts:
             google_business=google_business,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return await self._client.request(
             "POST", "/posts/create-and-publish", json=body
@@ -780,8 +915,25 @@ class AsyncPosts:
         google_business: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
+        draft: Optional[bool] = None,
+        media_fit: Optional[Mapping[str, str]] = None,
+        comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
+
+        ``draft=False`` without ``scheduled_at`` schedules a planned draft at
+        the ``scheduled_at`` it already carries (``400 validation_error`` when
+        it has none or it is in the past). ``draft=True`` without
+        ``scheduled_at`` unschedules a scheduled post: it keeps its time and
+        stays on the calendar as a dashed draft, nothing publishes; a post
+        waiting for approval leaves its workflow. ``draft=True`` with
+        ``scheduled_at`` moves the time and keeps (or makes) the post a draft.
+
+        ``media_fit`` (same shape as on :meth:`create`) alone re-decides the
+        stored images: ``"keep"`` gives the original back, ``"crop"`` crops
+        an image that was kept. Like :meth:`create`, the response can carry a
+        top-level ``warnings`` list with ``image_fit`` entries when the update
+        changes the images or ``media_fit``.
 
         Only top-level ``None`` values are dropped from the body, so passing
         e.g. ``x={"thread_parts": None}`` still clears an X thread. The same
@@ -796,6 +948,11 @@ class AsyncPosts:
         company's total reserved credits (across every scheduled X link
         post) past its balance, the request is rejected with
         ``402 x_credits_insufficient`` before anything changes.
+
+        ``comment_dm_automation`` (same shape as on :meth:`create`) as a
+        mapping replaces the post's comment-to-DM automation, an explicit
+        ``None`` removes it, and leaving it out keeps it. Needs the
+        ``automations:write`` scope.
         """
         body = _update_body(
             content=content,
@@ -821,6 +978,9 @@ class AsyncPosts:
             google_business=google_business,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
+            draft=draft,
+            media_fit=media_fit,
+            comment_dm_automation=comment_dm_automation,
         )
         return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
