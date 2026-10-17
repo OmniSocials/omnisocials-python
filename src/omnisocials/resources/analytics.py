@@ -55,7 +55,9 @@ class Analytics:
 
     def best_times(self, *, platform: str, timezone: Optional[str] = None) -> Any:
         """``GET /analytics/best-times`` - best times to post for a platform,
-        derived from the workspace's own engagement history."""
+        derived from the workspace's own engagement history. The response has
+        no ``data`` wrapper: ``platform``, ``timezone``, ``basis``, ``grid`` and
+        ``recommendations`` sit at the top level."""
         return self._client.request(
             "GET",
             "/analytics/best-times",
@@ -105,7 +107,8 @@ class AsyncAnalytics:
     async def best_times(
         self, *, platform: str, timezone: Optional[str] = None
     ) -> Any:
-        """``GET /analytics/best-times`` - best times to post for a platform."""
+        """``GET /analytics/best-times`` - best times to post for a platform.
+        The response has no ``data`` wrapper (see the sync client)."""
         return await self._client.request(
             "GET",
             "/analytics/best-times",

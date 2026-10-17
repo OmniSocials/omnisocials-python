@@ -60,6 +60,7 @@ def _create_body(
     mastodon: Optional[Mapping[str, Any]],
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
+    telegram: Optional[Mapping[str, Any]] = None,
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
     comment_dm_automation: Optional[Mapping[str, Any]] = None,
@@ -99,6 +100,7 @@ def _create_body(
             "mastodon": mastodon,
             "threads": threads,
             "google_business": google_business,
+            "telegram": telegram,
             "linkedin_poll": linkedin_poll,
             "video_cover": video_cover,
             "comment_dm_automation": comment_dm_automation,
@@ -129,6 +131,7 @@ def _update_body(
     mastodon: Optional[Mapping[str, Any]],
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
+    telegram: Optional[Mapping[str, Any]] = None,
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
     draft: Optional[bool] = None,
@@ -160,6 +163,7 @@ def _update_body(
             "mastodon": mastodon,
             "threads": threads,
             "google_business": google_business,
+            "telegram": telegram,
             "linkedin_poll": linkedin_poll,
             "video_cover": video_cover,
         }
@@ -239,6 +243,7 @@ class Posts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
@@ -312,6 +317,18 @@ class Posts:
         ``cropped``, ``kept`` or ``crop_failed``, with ``platform``,
         ``media_url``, ``ratio``, ``target`` and ``crop_url``).
 
+        ``telegram`` holds the Telegram options (the connected channel or
+        group, posted by the OmniSocials bot): ``silent``, ``link_preview``,
+        ``pin``, ``protect_content``, ``spoiler``, ``caption_above_media``
+        (booleans), up to 3 ``buttons`` (``{"text", "url"}``, not on an album
+        or a poll), a native ``poll`` (``{"options": 2 to 12 of up to 100
+        characters, "open_period": 5 to 2628000 seconds, "multiple"}``; the
+        post text is the question, max 300 characters, no media) and
+        ``first_comment`` (a reply under the post). Text up to 4,096
+        characters; with media, text over 1,024 characters is sent as a reply
+        under the media. No Stories. Once sent, ``data["telegram"]["result"]``
+        carries the message ids and the links.
+
         ``comment_dm_automation`` binds a comment-to-DM automation to the
         post (Instagram must be in ``channels``): a keyword in a comment is
         answered with a DM, once per person, with an optional public reply
@@ -357,6 +374,7 @@ class Posts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
@@ -398,6 +416,7 @@ class Posts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
@@ -440,6 +459,7 @@ class Posts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             media_fit=media_fit,
@@ -472,6 +492,7 @@ class Posts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         draft: Optional[bool] = None,
@@ -536,6 +557,7 @@ class Posts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             draft=draft,
@@ -678,6 +700,7 @@ class AsyncPosts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
@@ -751,6 +774,18 @@ class AsyncPosts:
         ``cropped``, ``kept`` or ``crop_failed``, with ``platform``,
         ``media_url``, ``ratio``, ``target`` and ``crop_url``).
 
+        ``telegram`` holds the Telegram options (the connected channel or
+        group, posted by the OmniSocials bot): ``silent``, ``link_preview``,
+        ``pin``, ``protect_content``, ``spoiler``, ``caption_above_media``
+        (booleans), up to 3 ``buttons`` (``{"text", "url"}``, not on an album
+        or a poll), a native ``poll`` (``{"options": 2 to 12 of up to 100
+        characters, "open_period": 5 to 2628000 seconds, "multiple"}``; the
+        post text is the question, max 300 characters, no media) and
+        ``first_comment`` (a reply under the post). Text up to 4,096
+        characters; with media, text over 1,024 characters is sent as a reply
+        under the media. No Stories. Once sent, ``data["telegram"]["result"]``
+        carries the message ids and the links.
+
         ``comment_dm_automation`` binds a comment-to-DM automation to the
         post (Instagram must be in ``channels``): a keyword in a comment is
         answered with a DM, once per person, with an optional public reply
@@ -796,6 +831,7 @@ class AsyncPosts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
@@ -837,6 +873,7 @@ class AsyncPosts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
@@ -879,6 +916,7 @@ class AsyncPosts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             media_fit=media_fit,
@@ -913,6 +951,7 @@ class AsyncPosts:
         mastodon: Optional[Mapping[str, Any]] = None,
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
+        telegram: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         draft: Optional[bool] = None,
@@ -976,6 +1015,7 @@ class AsyncPosts:
             mastodon=mastodon,
             threads=threads,
             google_business=google_business,
+            telegram=telegram,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             draft=draft,
