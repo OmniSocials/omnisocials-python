@@ -61,6 +61,7 @@ def _create_body(
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     telegram: Optional[Mapping[str, Any]] = None,
+    discord: Optional[Mapping[str, Any]] = None,
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
     comment_dm_automation: Optional[Mapping[str, Any]] = None,
@@ -101,6 +102,7 @@ def _create_body(
             "threads": threads,
             "google_business": google_business,
             "telegram": telegram,
+            "discord": discord,
             "linkedin_poll": linkedin_poll,
             "video_cover": video_cover,
             "comment_dm_automation": comment_dm_automation,
@@ -132,6 +134,7 @@ def _update_body(
     threads: Optional[Mapping[str, Any]],
     google_business: Optional[Mapping[str, Any]],
     telegram: Optional[Mapping[str, Any]] = None,
+    discord: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
     draft: Optional[bool] = None,
@@ -172,6 +175,9 @@ def _update_body(
     # drop_none; NOT_GIVEN (the default) leaves it untouched.
     if not isinstance(comment_dm_automation, NotGiven):
         body["comment_dm_automation"] = comment_dm_automation
+    # Same for discord: an explicit None removes every Discord option.
+    if not isinstance(discord, NotGiven):
+        body["discord"] = discord
     return body
 
 
@@ -244,6 +250,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
@@ -329,19 +336,40 @@ class Posts:
         under the media. No Stories. Once sent, ``data["telegram"]["result"]``
         carries the message ids and the links.
 
+        ``discord`` holds the Discord options (one Discord channel, posted
+        through its incoming webhook with the webhook's name and picture):
+        ``silent``, ``link_preview`` (default on), ``allow_mentions`` (default
+        off: @everyone, @here, role and user mentions show as text and ping
+        nobody), ``spoiler`` (booleans), ``thread_name`` (the post title in a
+        forum or media channel, 1 to 100 characters; on a text channel the
+        post goes out without it), up to 5 ``buttons`` (``{"text": 1 to 80 characters, "url":
+        https:// or http://}``, one row, not with a poll) and a native
+        ``poll`` (``{"options": 2 to 10 of up to 55 characters,
+        "duration_hours": 1 to 768 (default 24), "multiple"}``; the post text
+        is the question, max 300 characters, no media and no buttons). Text
+        up to 2,000 characters; up to 10 images, GIFs and videos per message,
+        a video or GIF over 20 MB is sent as a link in the text. No Stories.
+        Once sent, ``data["discord"]["result"]`` carries the message id and
+        the link.
+
         ``comment_dm_automation`` binds a comment-to-DM automation to the
-        post (Instagram must be in ``channels``): a keyword in a comment is
-        answered with a DM, once per person, with an optional public reply
-        under the comment. Shape: ``{"trigger": {"keywords": ["guide"],
-        "match": "word"}, "actions": {"dm": {"text": "..."}, "public_reply":
-        {"enabled": True, "variations": [...]}}, "limits": {"max_sends":
-        500}}`` (see ``client.automations.create()`` for the fields). Needs
-        the ``automations:write`` scope on the key (``403
+        post (Instagram or Facebook must be in ``channels``): a keyword in a
+        comment is answered with a DM, once per person, with an optional
+        public reply under the comment. Shape: ``{"trigger": {"keywords":
+        ["guide"], "match": "word"}, "actions": {"dm": {"text": "..."},
+        "public_reply": {"enabled": True, "variations": [...]}}, "limits":
+        {"max_sends": 500}, "platforms": ["instagram", "facebook"]}`` (see
+        ``client.automations.create()`` for the fields). ``platforms`` makes
+        one automation per listed channel; each must be a channel of the
+        post. Without it: Instagram when the post goes there, else Facebook.
+        Needs the ``automations:write`` scope on the key (``403
         insufficient_scope``, checked before anything else); a bad object is
         a ``400 validation_error`` whose message starts with
         ``comment_dm_automation: ``. The response then carries
-        ``data["comment_dm_automation"]`` (the automation, with ``post``
-        ``None``); it starts listening once the post is live on Instagram.
+        ``data["comment_dm_automation"]`` (the first automation, with
+        ``post`` ``None``, plus ``platforms`` and ``automations``, one
+        ``{"id", "platform", "status"}`` per channel); each starts listening
+        once the post is live on its channel.
         """
         body = _create_body(
             content=content,
@@ -375,6 +403,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
@@ -417,6 +446,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
@@ -460,6 +490,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             media_fit=media_fit,
@@ -493,6 +524,7 @@ class Posts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         draft: Optional[bool] = None,
@@ -531,9 +563,15 @@ class Posts:
         ``402 x_credits_insufficient`` before anything changes.
 
         ``comment_dm_automation`` (same shape as on :meth:`create`) as a
-        mapping replaces the post's comment-to-DM automation, an explicit
-        ``None`` removes it, and leaving it out keeps it. Needs the
+        mapping replaces the post's comment-to-DM automations (a channel no
+        longer in ``platforms`` loses its automation), an explicit ``None``
+        removes them all, and leaving it out keeps them. Needs the
         ``automations:write`` scope.
+
+        ``discord`` merges into the stored Discord options: a key set to
+        ``None`` removes that option (e.g. ``discord={"poll": None}``), an
+        explicit ``discord=None`` removes every option, and leaving it out
+        keeps them.
         """
         body = _update_body(
             content=content,
@@ -558,6 +596,7 @@ class Posts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             draft=draft,
@@ -701,6 +740,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         approval_workflow_id: Optional[str] = None,
@@ -786,19 +826,40 @@ class AsyncPosts:
         under the media. No Stories. Once sent, ``data["telegram"]["result"]``
         carries the message ids and the links.
 
+        ``discord`` holds the Discord options (one Discord channel, posted
+        through its incoming webhook with the webhook's name and picture):
+        ``silent``, ``link_preview`` (default on), ``allow_mentions`` (default
+        off: @everyone, @here, role and user mentions show as text and ping
+        nobody), ``spoiler`` (booleans), ``thread_name`` (the post title in a
+        forum or media channel, 1 to 100 characters; on a text channel the
+        post goes out without it), up to 5 ``buttons`` (``{"text": 1 to 80 characters, "url":
+        https:// or http://}``, one row, not with a poll) and a native
+        ``poll`` (``{"options": 2 to 10 of up to 55 characters,
+        "duration_hours": 1 to 768 (default 24), "multiple"}``; the post text
+        is the question, max 300 characters, no media and no buttons). Text
+        up to 2,000 characters; up to 10 images, GIFs and videos per message,
+        a video or GIF over 20 MB is sent as a link in the text. No Stories.
+        Once sent, ``data["discord"]["result"]`` carries the message id and
+        the link.
+
         ``comment_dm_automation`` binds a comment-to-DM automation to the
-        post (Instagram must be in ``channels``): a keyword in a comment is
-        answered with a DM, once per person, with an optional public reply
-        under the comment. Shape: ``{"trigger": {"keywords": ["guide"],
-        "match": "word"}, "actions": {"dm": {"text": "..."}, "public_reply":
-        {"enabled": True, "variations": [...]}}, "limits": {"max_sends":
-        500}}`` (see ``client.automations.create()`` for the fields). Needs
-        the ``automations:write`` scope on the key (``403
+        post (Instagram or Facebook must be in ``channels``): a keyword in a
+        comment is answered with a DM, once per person, with an optional
+        public reply under the comment. Shape: ``{"trigger": {"keywords":
+        ["guide"], "match": "word"}, "actions": {"dm": {"text": "..."},
+        "public_reply": {"enabled": True, "variations": [...]}}, "limits":
+        {"max_sends": 500}, "platforms": ["instagram", "facebook"]}`` (see
+        ``client.automations.create()`` for the fields). ``platforms`` makes
+        one automation per listed channel; each must be a channel of the
+        post. Without it: Instagram when the post goes there, else Facebook.
+        Needs the ``automations:write`` scope on the key (``403
         insufficient_scope``, checked before anything else); a bad object is
         a ``400 validation_error`` whose message starts with
         ``comment_dm_automation: ``. The response then carries
-        ``data["comment_dm_automation"]`` (the automation, with ``post``
-        ``None``); it starts listening once the post is live on Instagram.
+        ``data["comment_dm_automation"]`` (the first automation, with
+        ``post`` ``None``, plus ``platforms`` and ``automations``, one
+        ``{"id", "platform", "status"}`` per channel); each starts listening
+        once the post is live on its channel.
         """
         body = _create_body(
             content=content,
@@ -832,6 +893,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             approval_workflow_id=approval_workflow_id,
@@ -874,6 +936,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Optional[Mapping[str, Any]] = None,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
@@ -917,6 +980,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             media_fit=media_fit,
@@ -952,6 +1016,7 @@ class AsyncPosts:
         threads: Optional[Mapping[str, Any]] = None,
         google_business: Optional[Mapping[str, Any]] = None,
         telegram: Optional[Mapping[str, Any]] = None,
+        discord: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
         linkedin_poll: Optional[Mapping[str, Any]] = None,
         video_cover: Optional[Mapping[str, Any]] = None,
         draft: Optional[bool] = None,
@@ -989,9 +1054,15 @@ class AsyncPosts:
         ``402 x_credits_insufficient`` before anything changes.
 
         ``comment_dm_automation`` (same shape as on :meth:`create`) as a
-        mapping replaces the post's comment-to-DM automation, an explicit
-        ``None`` removes it, and leaving it out keeps it. Needs the
+        mapping replaces the post's comment-to-DM automations (a channel no
+        longer in ``platforms`` loses its automation), an explicit ``None``
+        removes them all, and leaving it out keeps them. Needs the
         ``automations:write`` scope.
+
+        ``discord`` merges into the stored Discord options: a key set to
+        ``None`` removes that option (e.g. ``discord={"poll": None}``), an
+        explicit ``discord=None`` removes every option, and leaving it out
+        keeps them.
         """
         body = _update_body(
             content=content,
@@ -1016,6 +1087,7 @@ class AsyncPosts:
             threads=threads,
             google_business=google_business,
             telegram=telegram,
+            discord=discord,
             linkedin_poll=linkedin_poll,
             video_cover=video_cover,
             draft=draft,

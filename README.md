@@ -1,6 +1,6 @@
 # OmniSocials Python SDK
 
-The official Python SDK for OmniSocials: post, schedule, reply and report on 12 social platforms (Instagram, Facebook, LinkedIn, X, TikTok, YouTube, Threads, Pinterest, Bluesky, Mastodon, Google Business and Telegram) from one API. Guide: [omnisocials.com/sdk/python](https://omnisocials.com/sdk/python)
+The official Python SDK for OmniSocials: post, schedule, reply and report on 13 social platforms (Instagram, Facebook, LinkedIn, X, TikTok, YouTube, Threads, Pinterest, Bluesky, Mastodon, Google Business, Telegram and Discord) from one API. Guide: [omnisocials.com/sdk/python](https://omnisocials.com/sdk/python)
 
 Full API reference: [https://docs.omnisocials.com](https://docs.omnisocials.com)
 
@@ -127,6 +127,8 @@ for event in events["data"]:
 
 The events response is `{"data", "counts", "pagination"}`, not the plain list: `counts` is the number of events per outcome (`sent`, `skipped`, `failed`, `pending`). An automation can also listen on a post published outside OmniSocials (`client.automations.create(instagram_media_id=..., actions=...)`), on the next post the workspace publishes (`trigger={"scope": "next_post"}`) or on every post (`"scope": "any"`), and on DMs and story replies (`trigger={"kinds": ["dm", "story_reply"], ...}`).
 
+A Facebook Page works the same way, and the DM lands in Messenger: pass `platform="facebook"` to `client.automations.create()`, or `facebook_post_id=...` for a Page post published outside OmniSocials. On a post, `comment_dm_automation={"platforms": ["instagram", "facebook"], ...}` makes one automation per channel with the same keywords and DM. Facebook has no story replies.
+
 ### Per-media alt text
 
 Every `media_urls` / `media_ids` entry accepts either a plain string or a dict with an `alt` accessibility description (max 1500 chars). Alt text is delivered to Mastodon (media description), Bluesky (embed alt), X (photos and GIFs), Pinterest (pin alt text), Instagram (images), and LinkedIn (images). Strings and dicts can be mixed, and the same shape works in per-platform mappings and `thread_parts` media.
@@ -189,6 +191,33 @@ client.posts.create(
     channels=["telegram"],
     telegram={"poll": {"options": ["Tuesday", "Thursday", "Saturday"], "open_period": 86400}},
 )
+```
+
+### Discord channels
+
+`discord` is one Discord channel the workspace connected in OmniSocials; the post goes out through the channel's incoming webhook and shows the webhook's name and picture. The `discord` options: `silent`, `link_preview` (default on), `allow_mentions` (default off, so @everyone, @here, role and user mentions show as text and ping nobody) and `spoiler` (booleans), `thread_name` (the post title in a forum or media channel, 1 to 100 characters), up to 5 `buttons` (`{ text, url }`, one row, not with a poll) and a native `poll` (2 to 10 options of up to 55 characters, `duration_hours` 1 to 768, default 24, `multiple`; the post text is the question, max 300 characters, no media). Text up to 2,000 characters. Up to 10 images, GIFs and videos per message; a video or GIF over Discord's 20 MB attachment limit is sent as a link in the text. No Stories. Once sent, the post's `discord.result` carries the message id and the link. Discord gives webhooks no view counts: analytics carry the reactions and the poll votes.
+
+```python
+client.posts.create(
+    content="Patch 2.4 is out. Read the notes below.",
+    channels=["discord"],
+    scheduled_at="2026-11-02T09:00:00Z",
+    media_urls=["https://example.com/patch-notes.png"],
+    discord={
+        "silent": True,
+        "buttons": [{"text": "Patch notes", "url": "https://example.com/patch-2-4"}],
+    },
+)
+
+# A native poll: the text is the question.
+client.posts.create(
+    content="Which mode do we test next?",
+    channels=["discord"],
+    discord={"poll": {"options": ["Ranked", "Co-op", "Arena"], "duration_hours": 48}},
+)
+
+# On update every key merges; None removes one option, discord=None removes them all.
+client.posts.update("post_id", discord={"poll": None})
 ```
 
 ### Chained threads (X, Bluesky, Mastodon, Threads)

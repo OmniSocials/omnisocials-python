@@ -1,8 +1,9 @@
 """Automations resource: comment-to-DM automations (list, get, create,
 update, delete, events). An automation answers a keyword in an Instagram
 comment (or a DM, or a story reply) with a DM, once per person, with an
-optional public reply under the comment. The scopes are opt-in on the API
-key: ``automations:read`` for list / get / list_events, ``automations:write``
+optional public reply under the comment. With ``platform="facebook"`` it
+runs on a Facebook Page instead, and the DM lands in Messenger (a Page has
+no story replies). The scopes are opt-in on the API key: ``automations:read`` for list / get / list_events, ``automations:write``
 for create / update / delete (and for ``comment_dm_automation`` on posts)."""
 
 from __future__ import annotations
@@ -26,12 +27,16 @@ def _automation_body(
     actions: Optional[Mapping[str, Any]],
     limits: Optional[Mapping[str, Any]],
     status: Optional[str],
+    platform: Optional[str] = None,
+    facebook_post_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     return drop_none(
         {
+            "platform": platform,
             "name": name,
             "post_id": post_id,
             "instagram_media_id": instagram_media_id,
+            "facebook_post_id": facebook_post_id,
             "trigger": trigger,
             "actions": actions,
             "limits": limits,
@@ -45,14 +50,21 @@ class Automations:
         self._client = client
 
     def list(
-        self, *, status: Optional[str] = None, post_id: Optional[str] = None
+        self,
+        *,
+        status: Optional[str] = None,
+        post_id: Optional[str] = None,
+        platform: Optional[str] = None,
     ) -> Any:
         """``GET /automations`` - list the workspace's comment-to-DM
         automations, optionally by ``status`` (``active``, ``paused``,
-        ``completed``) or by the OmniSocials ``post_id`` they are bound to.
-        Requires the ``automations:read`` scope (opt-in on the API key)."""
+        ``completed``), by ``platform`` (``instagram``, ``facebook``) or by
+        the OmniSocials ``post_id`` they are bound to. Requires the
+        ``automations:read`` scope (opt-in on the API key)."""
         return self._client.request(
-            "GET", "/automations", query={"status": status, "post_id": post_id}
+            "GET",
+            "/automations",
+            query={"status": status, "platform": platform, "post_id": post_id},
         )
 
     def get(self, automation_id: str) -> Any:
@@ -70,16 +82,24 @@ class Automations:
         post_id: Optional[str] = None,
         instagram_media_id: Optional[str] = None,
         status: Optional[str] = None,
+        platform: Optional[str] = None,
+        facebook_post_id: Optional[str] = None,
     ) -> Any:
         """``POST /automations`` - create a comment-to-DM automation.
 
         A keyword in an Instagram comment (or a DM, or a story reply) is
         answered with a DM, once per person, with an optional public reply
-        under the comment. Bind it to one post with ``post_id`` (an
-        OmniSocials post that goes to Instagram, scheduled or live; one
-        automation per post) or ``instagram_media_id`` (a post published
-        outside OmniSocials), not both; ``trigger["scope"]`` ``next_post`` or
-        ``any`` needs neither.
+        under the comment. ``platform`` is ``instagram`` (default) or
+        ``facebook``: on a Facebook Page a keyword in a comment (or a
+        Messenger message to the Page) is answered in Messenger, and a Page
+        has no story replies. Bind it to one post with ``post_id`` (an
+        OmniSocials post that goes to the channel, scheduled or live; one
+        automation per post and platform), ``instagram_media_id`` (an
+        Instagram post published outside OmniSocials) or
+        ``facebook_post_id`` (a Page post published outside OmniSocials, as
+        ``{page-id}_{post-id}`` or the post id alone; implies ``facebook``),
+        at most one; ``trigger["scope"]`` ``next_post`` or ``any`` needs
+        none.
 
         ``actions`` is required: ``{"dm": {"text": "..."}}`` (max 1000
         characters) plus an optional ``"public_reply": {"enabled": True,
@@ -90,21 +110,26 @@ class Automations:
         characters, required unless ``match`` is ``any``; ``match`` is
         ``word``, ``contains`` or ``any``. ``limits`` is ``{"max_sends":
         500, "stop_at": "2026-12-31T00:00:00Z"}`` (both optional).
-        ``status`` is ``active`` (default) or ``paused``. Instagram rules:
-        one private reply per comment, within 7 days; OmniSocials caps sends
-        at 180 DMs an hour per account.
+        ``status`` is ``active`` (default) or ``paused``. Meta rules, the
+        same on Instagram and Facebook: one private reply per comment,
+        within 7 days; OmniSocials caps sends at 180 DMs an hour per account
+        and platform.
 
         Requires the ``automations:write`` scope (opt-in on the API key).
         Errors: ``400 validation_error``, ``400 post_not_instagram``,
-        ``400 post_required``, ``404 post_not_found``,
-        ``404 instagram_media_not_found``, ``409 instagram_not_connected``,
-        ``409 instagram_needs_reauth``, ``409 automation_exists`` (the error
+        ``400 post_not_facebook``, ``400 post_required``,
+        ``404 post_not_found``, ``404 instagram_media_not_found``,
+        ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
+        ``409 instagram_needs_reauth``, ``409 facebook_not_connected``,
+        ``409 facebook_needs_reauth``, ``409 automation_exists`` (the error
         body also carries ``automation_id``).
         """
         body = _automation_body(
+            platform=platform,
             name=name,
             post_id=post_id,
             instagram_media_id=instagram_media_id,
+            facebook_post_id=facebook_post_id,
             trigger=trigger,
             actions=actions,
             limits=limits,
@@ -123,6 +148,8 @@ class Automations:
         actions: Optional[Mapping[str, Any]] = None,
         limits: Optional[Mapping[str, Any]] = None,
         status: Optional[str] = None,
+        platform: Optional[str] = None,
+        facebook_post_id: Optional[str] = None,
     ) -> Any:
         """``PATCH /automations/{id}`` - partial update.
 
@@ -134,15 +161,20 @@ class Automations:
         ``public_reply`` with ``"enabled": False`` or ``"variations": []``
         turns the public reply off; ``limits={"max_sends": None}`` removes
         that limit. ``status="paused"`` pauses and ``"active"`` resumes;
-        another ``post_id`` / ``instagram_media_id`` moves the automation to
-        that post. A ``completed`` automation starts again when its limits
-        or trigger change. Requires the ``automations:write`` scope.
-        ``400 no_fields`` when nothing is passed.
+        another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
+        moves the automation to that post. The platform cannot change: a
+        ``platform`` other than the automation's is a
+        ``400 platform_immutable``. A ``completed`` automation starts again
+        when its limits or trigger change. Requires the
+        ``automations:write`` scope. ``400 no_fields`` when nothing is
+        passed.
         """
         body = _automation_body(
+            platform=platform,
             name=name,
             post_id=post_id,
             instagram_media_id=instagram_media_id,
+            facebook_post_id=facebook_post_id,
             trigger=trigger,
             actions=actions,
             limits=limits,
@@ -177,7 +209,8 @@ class Automations:
         ``counts`` is the number of events per outcome (an outcome with no
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
-        ``reason_label``, ``person`` (``id``, ``username``),
+        ``reason_label``, ``person`` (``id``, ``username``; on Facebook the
+        person's name, since Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
         ``public_reply``, ``platform_message_id``, ``created_at`` and
         ``sent_at``.
@@ -194,14 +227,21 @@ class AsyncAutomations:
         self._client = client
 
     async def list(
-        self, *, status: Optional[str] = None, post_id: Optional[str] = None
+        self,
+        *,
+        status: Optional[str] = None,
+        post_id: Optional[str] = None,
+        platform: Optional[str] = None,
     ) -> Any:
         """``GET /automations`` - list the workspace's comment-to-DM
         automations, optionally by ``status`` (``active``, ``paused``,
-        ``completed``) or by the OmniSocials ``post_id`` they are bound to.
-        Requires the ``automations:read`` scope (opt-in on the API key)."""
+        ``completed``), by ``platform`` (``instagram``, ``facebook``) or by
+        the OmniSocials ``post_id`` they are bound to. Requires the
+        ``automations:read`` scope (opt-in on the API key)."""
         return await self._client.request(
-            "GET", "/automations", query={"status": status, "post_id": post_id}
+            "GET",
+            "/automations",
+            query={"status": status, "platform": platform, "post_id": post_id},
         )
 
     async def get(self, automation_id: str) -> Any:
@@ -219,16 +259,24 @@ class AsyncAutomations:
         post_id: Optional[str] = None,
         instagram_media_id: Optional[str] = None,
         status: Optional[str] = None,
+        platform: Optional[str] = None,
+        facebook_post_id: Optional[str] = None,
     ) -> Any:
         """``POST /automations`` - create a comment-to-DM automation.
 
         A keyword in an Instagram comment (or a DM, or a story reply) is
         answered with a DM, once per person, with an optional public reply
-        under the comment. Bind it to one post with ``post_id`` (an
-        OmniSocials post that goes to Instagram, scheduled or live; one
-        automation per post) or ``instagram_media_id`` (a post published
-        outside OmniSocials), not both; ``trigger["scope"]`` ``next_post`` or
-        ``any`` needs neither.
+        under the comment. ``platform`` is ``instagram`` (default) or
+        ``facebook``: on a Facebook Page a keyword in a comment (or a
+        Messenger message to the Page) is answered in Messenger, and a Page
+        has no story replies. Bind it to one post with ``post_id`` (an
+        OmniSocials post that goes to the channel, scheduled or live; one
+        automation per post and platform), ``instagram_media_id`` (an
+        Instagram post published outside OmniSocials) or
+        ``facebook_post_id`` (a Page post published outside OmniSocials, as
+        ``{page-id}_{post-id}`` or the post id alone; implies ``facebook``),
+        at most one; ``trigger["scope"]`` ``next_post`` or ``any`` needs
+        none.
 
         ``actions`` is required: ``{"dm": {"text": "..."}}`` (max 1000
         characters) plus an optional ``"public_reply": {"enabled": True,
@@ -239,21 +287,26 @@ class AsyncAutomations:
         characters, required unless ``match`` is ``any``; ``match`` is
         ``word``, ``contains`` or ``any``. ``limits`` is ``{"max_sends":
         500, "stop_at": "2026-12-31T00:00:00Z"}`` (both optional).
-        ``status`` is ``active`` (default) or ``paused``. Instagram rules:
-        one private reply per comment, within 7 days; OmniSocials caps sends
-        at 180 DMs an hour per account.
+        ``status`` is ``active`` (default) or ``paused``. Meta rules, the
+        same on Instagram and Facebook: one private reply per comment,
+        within 7 days; OmniSocials caps sends at 180 DMs an hour per account
+        and platform.
 
         Requires the ``automations:write`` scope (opt-in on the API key).
         Errors: ``400 validation_error``, ``400 post_not_instagram``,
-        ``400 post_required``, ``404 post_not_found``,
-        ``404 instagram_media_not_found``, ``409 instagram_not_connected``,
-        ``409 instagram_needs_reauth``, ``409 automation_exists`` (the error
+        ``400 post_not_facebook``, ``400 post_required``,
+        ``404 post_not_found``, ``404 instagram_media_not_found``,
+        ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
+        ``409 instagram_needs_reauth``, ``409 facebook_not_connected``,
+        ``409 facebook_needs_reauth``, ``409 automation_exists`` (the error
         body also carries ``automation_id``).
         """
         body = _automation_body(
+            platform=platform,
             name=name,
             post_id=post_id,
             instagram_media_id=instagram_media_id,
+            facebook_post_id=facebook_post_id,
             trigger=trigger,
             actions=actions,
             limits=limits,
@@ -272,6 +325,8 @@ class AsyncAutomations:
         actions: Optional[Mapping[str, Any]] = None,
         limits: Optional[Mapping[str, Any]] = None,
         status: Optional[str] = None,
+        platform: Optional[str] = None,
+        facebook_post_id: Optional[str] = None,
     ) -> Any:
         """``PATCH /automations/{id}`` - partial update.
 
@@ -283,15 +338,20 @@ class AsyncAutomations:
         ``public_reply`` with ``"enabled": False`` or ``"variations": []``
         turns the public reply off; ``limits={"max_sends": None}`` removes
         that limit. ``status="paused"`` pauses and ``"active"`` resumes;
-        another ``post_id`` / ``instagram_media_id`` moves the automation to
-        that post. A ``completed`` automation starts again when its limits
-        or trigger change. Requires the ``automations:write`` scope.
-        ``400 no_fields`` when nothing is passed.
+        another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
+        moves the automation to that post. The platform cannot change: a
+        ``platform`` other than the automation's is a
+        ``400 platform_immutable``. A ``completed`` automation starts again
+        when its limits or trigger change. Requires the
+        ``automations:write`` scope. ``400 no_fields`` when nothing is
+        passed.
         """
         body = _automation_body(
+            platform=platform,
             name=name,
             post_id=post_id,
             instagram_media_id=instagram_media_id,
+            facebook_post_id=facebook_post_id,
             trigger=trigger,
             actions=actions,
             limits=limits,
@@ -328,7 +388,8 @@ class AsyncAutomations:
         ``counts`` is the number of events per outcome (an outcome with no
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
-        ``reason_label``, ``person`` (``id``, ``username``),
+        ``reason_label``, ``person`` (``id``, ``username``; on Facebook the
+        person's name, since Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
         ``public_reply``, ``platform_message_id``, ``created_at`` and
         ``sent_at``.
