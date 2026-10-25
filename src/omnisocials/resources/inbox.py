@@ -170,9 +170,8 @@ class Inbox:
         company balance before the send and auto-refunded if the send fails.
         Can fail with ``402`` and code ``insufficient_credits`` (balance
         can't cover the 2 credits) or ``x_inbox_suspended`` (the workspace's
-        X inbox auto-suspended at zero balance; top up and re-enable it in
-        the dashboard to resume - DMs that arrive while suspended are not
-        recovered).
+        X inbox auto-suspended at zero balance; a top-up turns it back on by
+        itself, but DMs that arrive while suspended are not recovered).
 
         Threads replies publish as native Threads replies. The Threads inbox
         needs a Threads connection with the reply permission: a ``401`` with
@@ -463,9 +462,8 @@ class AsyncInbox:
         company balance before the send and auto-refunded if the send fails.
         Can fail with ``402`` and code ``insufficient_credits`` (balance
         can't cover the 2 credits) or ``x_inbox_suspended`` (the workspace's
-        X inbox auto-suspended at zero balance; top up and re-enable it in
-        the dashboard to resume - DMs that arrive while suspended are not
-        recovered).
+        X inbox auto-suspended at zero balance; a top-up turns it back on by
+        itself, but DMs that arrive while suspended are not recovered).
 
         Threads replies publish as native Threads replies. The Threads inbox
         needs a Threads connection with the reply permission: a ``401`` with

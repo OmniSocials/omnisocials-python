@@ -3,7 +3,10 @@ update, delete, events). An automation answers a keyword in an Instagram
 comment (or a DM, or a story reply) with a DM, once per person, with an
 optional public reply under the comment. With ``platform="facebook"`` it
 runs on a Facebook Page instead, and the DM lands in Messenger (a Page has
-no story replies). The scopes are opt-in on the API key: ``automations:read`` for list / get / list_events, ``automations:write``
+no story replies). With ``platform="x"`` it answers a keyword in a DM to the
+X account (``dm`` kind only, no post, no public reply), while X DMs are on
+for the workspace; every X answer ends with "Reply STOP to stop automatic
+messages." and a person who replies STOP gets no automatic DM again. The scopes are opt-in on the API key: ``automations:read`` for list / get / list_events, ``automations:write``
 for create / update / delete (and for ``comment_dm_automation`` on posts)."""
 
 from __future__ import annotations
@@ -58,7 +61,7 @@ class Automations:
     ) -> Any:
         """``GET /automations`` - list the workspace's comment-to-DM
         automations, optionally by ``status`` (``active``, ``paused``,
-        ``completed``), by ``platform`` (``instagram``, ``facebook``) or by
+        ``completed``), by ``platform`` (``instagram``, ``facebook``, ``x``) or by
         the OmniSocials ``post_id`` they are bound to. Requires the
         ``automations:read`` scope (opt-in on the API key)."""
         return self._client.request(
@@ -92,7 +95,13 @@ class Automations:
         under the comment. ``platform`` is ``instagram`` (default) or
         ``facebook``: on a Facebook Page a keyword in a comment (or a
         Messenger message to the Page) is answered in Messenger, and a Page
-        has no story replies. Bind it to one post with ``post_id`` (an
+        has no story replies. ``platform="x"`` answers a keyword in a DM to
+        the X account: ``trigger["kinds"]`` must be ``["dm"]`` (X allows an
+        automated DM only after the person wrote first), with no post and
+        no public reply; an active X automation needs X DMs on for the
+        workspace (``409 x_dms_off``; ``status="paused"`` always saves),
+        and every X answer ends with "Reply STOP to stop automatic
+        messages.". Bind it to one post with ``post_id`` (an
         OmniSocials post that goes to the channel, scheduled or live; one
         automation per post and platform), ``instagram_media_id`` (an
         Instagram post published outside OmniSocials) or
@@ -113,7 +122,8 @@ class Automations:
         ``status`` is ``active`` (default) or ``paused``. Meta rules, the
         same on Instagram and Facebook: one private reply per comment,
         within 7 days; OmniSocials caps sends at 180 DMs an hour per account
-        and platform.
+        and platform, and on X at 15 per 15 minutes and 450 a day; an answer
+        over a cap waits in a queue (``queued``) for up to an hour.
 
         Requires the ``automations:write`` scope (opt-in on the API key).
         Errors: ``400 validation_error``, ``400 post_not_instagram``,
@@ -121,8 +131,9 @@ class Automations:
         ``404 post_not_found``, ``404 instagram_media_not_found``,
         ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
         ``409 instagram_needs_reauth``, ``409 facebook_not_connected``,
-        ``409 facebook_needs_reauth``, ``409 automation_exists`` (the error
-        body also carries ``automation_id``).
+        ``409 facebook_needs_reauth``, ``409 x_not_connected``,
+        ``409 x_dms_off``, ``409 automation_exists`` (the error body also
+        carries ``automation_id``).
         """
         body = _automation_body(
             platform=platform,
@@ -164,8 +175,10 @@ class Automations:
         another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
         moves the automation to that post. The platform cannot change: a
         ``platform`` other than the automation's is a
-        ``400 platform_immutable``. A ``completed`` automation starts again
-        when its limits or trigger change. Requires the
+        ``400 platform_immutable``. ``status="active"`` on an X automation
+        needs X DMs on for the workspace (``409 x_dms_off``). A
+        ``completed`` automation starts again when its limits or trigger
+        change. Requires the
         ``automations:write`` scope. ``400 no_fields`` when nothing is
         passed.
         """
@@ -200,8 +213,10 @@ class Automations:
         """``GET /automations/{id}/events`` - the automation's activity: one
         event per person it answered, skipped or failed on.
 
-        ``outcome`` filters on ``sent``, ``skipped``, ``failed`` or
-        ``pending``; ``limit`` is 1 to 100 (default 25), ``offset`` skips.
+        ``outcome`` filters on ``sent``, ``skipped``, ``failed``,
+        ``pending``, ``queued`` (waits for a free slot under the send cap,
+        out within the hour) or ``opted_out`` (the person replied STOP on
+        X); ``limit`` is 1 to 100 (default 25), ``offset`` skips.
         Requires the ``automations:read`` scope.
 
         The response is not the plain list envelope: ``{"data": [...],
@@ -209,8 +224,10 @@ class Automations:
         ``counts`` is the number of events per outcome (an outcome with no
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
-        ``reason_label``, ``person`` (``id``, ``username``; on Facebook the
-        person's name, since Facebook has no @handle),
+        ``reason_label`` (X adds the skip reasons ``dms_closed``,
+        ``no_credits``, ``opted_out`` and ``automation_off``), ``person``
+        (``id``, ``username``; on Facebook the person's name, since
+        Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
         ``public_reply``, ``platform_message_id``, ``created_at`` and
         ``sent_at``.
@@ -235,7 +252,7 @@ class AsyncAutomations:
     ) -> Any:
         """``GET /automations`` - list the workspace's comment-to-DM
         automations, optionally by ``status`` (``active``, ``paused``,
-        ``completed``), by ``platform`` (``instagram``, ``facebook``) or by
+        ``completed``), by ``platform`` (``instagram``, ``facebook``, ``x``) or by
         the OmniSocials ``post_id`` they are bound to. Requires the
         ``automations:read`` scope (opt-in on the API key)."""
         return await self._client.request(
@@ -269,7 +286,13 @@ class AsyncAutomations:
         under the comment. ``platform`` is ``instagram`` (default) or
         ``facebook``: on a Facebook Page a keyword in a comment (or a
         Messenger message to the Page) is answered in Messenger, and a Page
-        has no story replies. Bind it to one post with ``post_id`` (an
+        has no story replies. ``platform="x"`` answers a keyword in a DM to
+        the X account: ``trigger["kinds"]`` must be ``["dm"]`` (X allows an
+        automated DM only after the person wrote first), with no post and
+        no public reply; an active X automation needs X DMs on for the
+        workspace (``409 x_dms_off``; ``status="paused"`` always saves),
+        and every X answer ends with "Reply STOP to stop automatic
+        messages.". Bind it to one post with ``post_id`` (an
         OmniSocials post that goes to the channel, scheduled or live; one
         automation per post and platform), ``instagram_media_id`` (an
         Instagram post published outside OmniSocials) or
@@ -290,7 +313,8 @@ class AsyncAutomations:
         ``status`` is ``active`` (default) or ``paused``. Meta rules, the
         same on Instagram and Facebook: one private reply per comment,
         within 7 days; OmniSocials caps sends at 180 DMs an hour per account
-        and platform.
+        and platform, and on X at 15 per 15 minutes and 450 a day; an answer
+        over a cap waits in a queue (``queued``) for up to an hour.
 
         Requires the ``automations:write`` scope (opt-in on the API key).
         Errors: ``400 validation_error``, ``400 post_not_instagram``,
@@ -298,8 +322,9 @@ class AsyncAutomations:
         ``404 post_not_found``, ``404 instagram_media_not_found``,
         ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
         ``409 instagram_needs_reauth``, ``409 facebook_not_connected``,
-        ``409 facebook_needs_reauth``, ``409 automation_exists`` (the error
-        body also carries ``automation_id``).
+        ``409 facebook_needs_reauth``, ``409 x_not_connected``,
+        ``409 x_dms_off``, ``409 automation_exists`` (the error body also
+        carries ``automation_id``).
         """
         body = _automation_body(
             platform=platform,
@@ -341,8 +366,10 @@ class AsyncAutomations:
         another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
         moves the automation to that post. The platform cannot change: a
         ``platform`` other than the automation's is a
-        ``400 platform_immutable``. A ``completed`` automation starts again
-        when its limits or trigger change. Requires the
+        ``400 platform_immutable``. ``status="active"`` on an X automation
+        needs X DMs on for the workspace (``409 x_dms_off``). A
+        ``completed`` automation starts again when its limits or trigger
+        change. Requires the
         ``automations:write`` scope. ``400 no_fields`` when nothing is
         passed.
         """
@@ -379,8 +406,10 @@ class AsyncAutomations:
         """``GET /automations/{id}/events`` - the automation's activity: one
         event per person it answered, skipped or failed on.
 
-        ``outcome`` filters on ``sent``, ``skipped``, ``failed`` or
-        ``pending``; ``limit`` is 1 to 100 (default 25), ``offset`` skips.
+        ``outcome`` filters on ``sent``, ``skipped``, ``failed``,
+        ``pending``, ``queued`` (waits for a free slot under the send cap,
+        out within the hour) or ``opted_out`` (the person replied STOP on
+        X); ``limit`` is 1 to 100 (default 25), ``offset`` skips.
         Requires the ``automations:read`` scope.
 
         The response is not the plain list envelope: ``{"data": [...],
@@ -388,8 +417,10 @@ class AsyncAutomations:
         ``counts`` is the number of events per outcome (an outcome with no
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
-        ``reason_label``, ``person`` (``id``, ``username``; on Facebook the
-        person's name, since Facebook has no @handle),
+        ``reason_label`` (X adds the skip reasons ``dms_closed``,
+        ``no_credits``, ``opted_out`` and ``automation_off``), ``person``
+        (``id``, ``username``; on Facebook the person's name, since
+        Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
         ``public_reply``, ``platform_message_id``, ``created_at`` and
         ``sent_at``.

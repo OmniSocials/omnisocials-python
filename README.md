@@ -125,9 +125,11 @@ for event in events["data"]:
     print(event["person"]["username"], event["outcome"], event["reason_label"])
 ```
 
-The events response is `{"data", "counts", "pagination"}`, not the plain list: `counts` is the number of events per outcome (`sent`, `skipped`, `failed`, `pending`). An automation can also listen on a post published outside OmniSocials (`client.automations.create(instagram_media_id=..., actions=...)`), on the next post the workspace publishes (`trigger={"scope": "next_post"}`) or on every post (`"scope": "any"`), and on DMs and story replies (`trigger={"kinds": ["dm", "story_reply"], ...}`).
+The events response is `{"data", "counts", "pagination"}`, not the plain list: `counts` is the number of events per outcome (`sent`, `skipped`, `failed`, `pending`, `queued`, `opted_out`). An automation can also listen on a post published outside OmniSocials (`client.automations.create(instagram_media_id=..., actions=...)`), on the next post the workspace publishes (`trigger={"scope": "next_post"}`) or on every post (`"scope": "any"`), and on DMs and story replies (`trigger={"kinds": ["dm", "story_reply"], ...}`).
 
 A Facebook Page works the same way, and the DM lands in Messenger: pass `platform="facebook"` to `client.automations.create()`, or `facebook_post_id=...` for a Page post published outside OmniSocials. On a post, `comment_dm_automation={"platforms": ["instagram", "facebook"], ...}` makes one automation per channel with the same keywords and DM. Facebook has no story replies.
+
+On X, pass `platform="x"` with `trigger={"kinds": ["dm"], "keywords": ["guide"]}`: the X account answers a keyword in a DM, once per person, and every answer ends with "Reply STOP to stop automatic messages." An active X automation needs X DMs on for the workspace (`409 x_dms_off`; `status="paused"` always saves). An answer over the send cap waits in a queue (`queued`) for up to an hour.
 
 ### Per-media alt text
 
@@ -388,7 +390,7 @@ while item["data"]:
 
 ### X DM replies use credits
 
-Replying to an X DM costs 2 prepaid credits per send, debited from the company balance before the send and auto-refunded if the send fails. `inbox.reply` can fail with a `402` on two new codes: `insufficient_credits` (the balance can't cover the 2 credits) and `x_inbox_suspended` (the workspace's X inbox auto-suspended after the balance hit zero — top up and re-enable it in the dashboard to resume; DMs that arrived while suspended are not recovered).
+Replying to an X DM costs 2 prepaid credits per send, debited from the company balance before the send and auto-refunded if the send fails. `inbox.reply` can fail with a `402` on two new codes: `insufficient_credits` (the balance can't cover the 2 credits) and `x_inbox_suspended` (the workspace's X inbox auto-suspended after the balance hit zero; a top-up turns it back on by itself, but DMs that arrived while suspended are not recovered).
 
 ```python
 from omnisocials import APIError
