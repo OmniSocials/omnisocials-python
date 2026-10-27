@@ -258,6 +258,38 @@ class Inbox:
             json={"hide": hide},
         )
 
+    def like(self, message_id: str, *, like: bool = True) -> Any:
+        """``POST /inbox/messages/{id}/like`` - like or unlike a comment
+        someone left on one of your posts, as the connected Page or
+        account.
+
+        Facebook Page, LinkedIn Page and TikTok comments (incoming comments
+        only). ``like=True`` (the default) likes the comment,
+        ``like=False`` removes the like. Facebook allows only Like (no Love
+        or other reactions). Liking a comment that is already liked, or
+        unliking one that is not, succeeds. Returns the comment after the
+        change (``{"data": <message>}``) with ``"liked"`` set: ``True``
+        when the account liked it, ``False`` when not, ``None`` where the
+        platform has no like through OmniSocials (DMs, Instagram, YouTube,
+        X, Threads). On Facebook and LinkedIn ``"liked"`` reflects likes
+        made through OmniSocials; TikTok also syncs likes made in the
+        TikTok app. Requires the ``inbox:write`` scope.
+
+        Errors: ``400`` ``unsupported_platform`` (not an incoming Facebook,
+        LinkedIn or TikTok comment), ``401`` ``reauth_required`` (the
+        TikTok comments authorization is missing or expired, or the LinkedIn Page connection expired), ``403``
+        ``reconnect_required`` (the account was connected without the
+        permission to like comments; reconnect it in the dashboard),
+        ``404`` ``not_found`` (message not in this workspace) or
+        ``account_not_connected``, ``502`` ``platform_error`` (the
+        platform rejected the call).
+        """
+        return self._client.request(
+            "POST",
+            f"/inbox/messages/{_encode_id(message_id)}/like",
+            json={"like": like},
+        )
+
     def delete_message(self, message_id: str) -> Any:
         """``DELETE /inbox/messages/{id}`` - delete a comment someone left on
         one of your posts, on the platform and from the inbox.
@@ -326,8 +358,8 @@ class Inbox:
         ``{"conversation", "message", "messages", "reply_window"}``, or
         ``None`` when nothing is waiting. ``"message"`` is the unanswered
         incoming item itself (the customer's latest DM, or the specific
-        comment): its ``"id"`` is what ``hide()`` and ``delete_message()``
-        take and the ``message_id`` to pass to ``reply()`` on comment
+        comment): its ``"id"`` is what ``hide()``, ``like()`` and
+        ``delete_message()`` take and the ``message_id`` to pass to ``reply()`` on comment
         threads, its ``"conversation_id"`` is what ``reply()`` takes.
         ``"messages"`` is the conversation so far, oldest first (the most
         recent 50 messages for long DM threads). ``"reply_window"`` is
@@ -550,6 +582,38 @@ class AsyncInbox:
             json={"hide": hide},
         )
 
+    async def like(self, message_id: str, *, like: bool = True) -> Any:
+        """``POST /inbox/messages/{id}/like`` - like or unlike a comment
+        someone left on one of your posts, as the connected Page or
+        account.
+
+        Facebook Page, LinkedIn Page and TikTok comments (incoming comments
+        only). ``like=True`` (the default) likes the comment,
+        ``like=False`` removes the like. Facebook allows only Like (no Love
+        or other reactions). Liking a comment that is already liked, or
+        unliking one that is not, succeeds. Returns the comment after the
+        change (``{"data": <message>}``) with ``"liked"`` set: ``True``
+        when the account liked it, ``False`` when not, ``None`` where the
+        platform has no like through OmniSocials (DMs, Instagram, YouTube,
+        X, Threads). On Facebook and LinkedIn ``"liked"`` reflects likes
+        made through OmniSocials; TikTok also syncs likes made in the
+        TikTok app. Requires the ``inbox:write`` scope.
+
+        Errors: ``400`` ``unsupported_platform`` (not an incoming Facebook,
+        LinkedIn or TikTok comment), ``401`` ``reauth_required`` (the
+        TikTok comments authorization is missing or expired, or the LinkedIn Page connection expired), ``403``
+        ``reconnect_required`` (the account was connected without the
+        permission to like comments; reconnect it in the dashboard),
+        ``404`` ``not_found`` (message not in this workspace) or
+        ``account_not_connected``, ``502`` ``platform_error`` (the
+        platform rejected the call).
+        """
+        return await self._client.request(
+            "POST",
+            f"/inbox/messages/{_encode_id(message_id)}/like",
+            json={"like": like},
+        )
+
     async def delete_message(self, message_id: str) -> Any:
         """``DELETE /inbox/messages/{id}`` - delete a comment someone left on
         one of your posts, on the platform and from the inbox.
@@ -618,8 +682,8 @@ class AsyncInbox:
         ``{"conversation", "message", "messages", "reply_window"}``, or
         ``None`` when nothing is waiting. ``"message"`` is the unanswered
         incoming item itself (the customer's latest DM, or the specific
-        comment): its ``"id"`` is what ``hide()`` and ``delete_message()``
-        take and the ``message_id`` to pass to ``reply()`` on comment
+        comment): its ``"id"`` is what ``hide()``, ``like()`` and
+        ``delete_message()`` take and the ``message_id`` to pass to ``reply()`` on comment
         threads, its ``"conversation_id"`` is what ``reply()`` takes.
         ``"messages"`` is the conversation so far, oldest first (the most
         recent 50 messages for long DM threads). ``"reply_window"`` is

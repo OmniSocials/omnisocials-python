@@ -356,6 +356,11 @@ client.inbox.reply(conversation_id, "Thanks for reaching out!")
 # TikTok, YouTube, Threads). hide=False unhides.
 client.inbox.hide(thread["data"][0]["id"])
 
+# Like a comment as the Page or account (Facebook, LinkedIn Page, TikTok).
+# like=False unlikes. The returned message carries "liked".
+liked = client.inbox.like(thread["data"][0]["id"])
+print(liked["data"]["liked"])  # True
+
 # Delete a comment outright (Facebook, Instagram, TikTok; YouTube: hide instead).
 # Replies under it go with it; their ids come back as "removed_reply_ids".
 client.inbox.delete_message(thread["data"][0]["id"])
