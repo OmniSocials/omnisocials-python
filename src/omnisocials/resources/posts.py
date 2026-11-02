@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence, Union
 
 from .._utils import NOT_GIVEN, NotGiven, drop_none, join_list
+from .tags import TagFilter, TagRef, tag_query
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -65,6 +66,7 @@ def _create_body(
     linkedin_poll: Optional[Mapping[str, Any]],
     video_cover: Optional[Mapping[str, Any]] = None,
     comment_dm_automation: Optional[Mapping[str, Any]] = None,
+    tags: Optional[Sequence[TagRef]] = None,
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -106,6 +108,7 @@ def _create_body(
             "linkedin_poll": linkedin_poll,
             "video_cover": video_cover,
             "comment_dm_automation": comment_dm_automation,
+            "tags": tags,
         }
     )
 
@@ -140,6 +143,7 @@ def _update_body(
     draft: Optional[bool] = None,
     media_fit: Optional[Mapping[str, str]] = None,
     comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
+    tags: Union[Sequence[TagRef], None, NotGiven] = NOT_GIVEN,
 ) -> Dict[str, Any]:
     body = drop_none(
         {
@@ -178,6 +182,9 @@ def _update_body(
     # Same for discord: an explicit None removes every Discord option.
     if not isinstance(discord, NotGiven):
         body["discord"] = discord
+    # And for tags: an explicit None (or []) removes every tag of the post.
+    if not isinstance(tags, NotGiven):
+        body["tags"] = tags
     return body
 
 
@@ -191,10 +198,26 @@ class Posts:
         status: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        tag: Optional[TagFilter] = None,
     ) -> Any:
-        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow)."""
+        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow).
+
+
+        ``tag`` (a tag id or name, or a list of them) keeps the posts with
+        any of those tags; an unknown tag is a ``404 tag_not_found``. Every
+        post carries ``tags`` (its tags) and ``trial_reel`` (``{"strategy":
+        "MANUAL" | "SS_PERFORMANCE"}`` for an Instagram Trial Reel, else
+        ``None``).
+        """
         return self._client.request(
-            "GET", "/posts", query={"status": status, "limit": limit, "offset": offset}
+            "GET",
+            "/posts",
+            query={
+                "status": status,
+                "limit": limit,
+                "offset": offset,
+                "tag": tag_query(tag),
+            },
         )
 
     def get(self, post_id: str) -> Any:
@@ -257,6 +280,7 @@ class Posts:
         draft: Optional[bool] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Optional[Mapping[str, Any]] = None,
+        tags: Optional[Sequence[TagRef]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
@@ -370,6 +394,12 @@ class Posts:
         ``post`` ``None``, plus ``platforms`` and ``automations``, one
         ``{"id", "platform", "status"}`` per channel); each starts listening
         once the post is live on its channel.
+
+        ``tags`` labels the post with the workspace's own tags (ids or
+        names, at most 20; a name that does not exist yet becomes a new tag)
+        to filter and compare posts in Analytics. Tags never go to a
+        platform. Errors: ``404 tag_not_found`` (an unknown id),
+        ``400 invalid_tags`` / ``too_many_tags``.
         """
         body = _create_body(
             content=content,
@@ -410,6 +440,7 @@ class Posts:
             draft=draft,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return self._client.request("POST", "/posts/create", json=body)
 
@@ -451,12 +482,13 @@ class Posts:
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Optional[Mapping[str, Any]] = None,
+        tags: Optional[Sequence[TagRef]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
         See :meth:`create` for the ``warnings`` list on X link posts, the
-        ``image_fit`` entries steered by ``media_fit`` and
-        ``comment_dm_automation``.
+        ``image_fit`` entries steered by ``media_fit``,
+        ``comment_dm_automation`` and ``tags``.
         """
         body = _create_body(
             content=content,
@@ -495,6 +527,7 @@ class Posts:
             video_cover=video_cover,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return self._client.request("POST", "/posts/create-and-publish", json=body)
 
@@ -530,6 +563,7 @@ class Posts:
         draft: Optional[bool] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
+        tags: Union[Sequence[TagRef], None, NotGiven] = NOT_GIVEN,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -572,6 +606,11 @@ class Posts:
         ``None`` removes that option (e.g. ``discord={"poll": None}``), an
         explicit ``discord=None`` removes every option, and leaving it out
         keeps them.
+
+        ``tags`` (ids or names, a new name becomes a tag) replaces the
+        post's tags; ``tags=None`` or ``tags=[]`` removes them all, and
+        leaving it out keeps them. An update with only ``tags`` works on
+        every post, published and failed ones included.
         """
         body = _update_body(
             content=content,
@@ -602,6 +641,7 @@ class Posts:
             draft=draft,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return self._client.request("PATCH", f"/posts/{post_id}", json=body)
 
@@ -682,10 +722,26 @@ class AsyncPosts:
         status: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        tag: Optional[TagFilter] = None,
     ) -> Any:
-        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow)."""
+        """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow).
+
+
+        ``tag`` (a tag id or name, or a list of them) keeps the posts with
+        any of those tags; an unknown tag is a ``404 tag_not_found``. Every
+        post carries ``tags`` (its tags) and ``trial_reel`` (``{"strategy":
+        "MANUAL" | "SS_PERFORMANCE"}`` for an Instagram Trial Reel, else
+        ``None``).
+        """
         return await self._client.request(
-            "GET", "/posts", query={"status": status, "limit": limit, "offset": offset}
+            "GET",
+            "/posts",
+            query={
+                "status": status,
+                "limit": limit,
+                "offset": offset,
+                "tag": tag_query(tag),
+            },
         )
 
     async def get(self, post_id: str) -> Any:
@@ -747,6 +803,7 @@ class AsyncPosts:
         draft: Optional[bool] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Optional[Mapping[str, Any]] = None,
+        tags: Optional[Sequence[TagRef]] = None,
     ) -> Any:
         """``POST /posts/create`` - create a post (draft, or scheduled when
         ``scheduled_at`` is set).
@@ -860,6 +917,12 @@ class AsyncPosts:
         ``post`` ``None``, plus ``platforms`` and ``automations``, one
         ``{"id", "platform", "status"}`` per channel); each starts listening
         once the post is live on its channel.
+
+        ``tags`` labels the post with the workspace's own tags (ids or
+        names, at most 20; a name that does not exist yet becomes a new tag)
+        to filter and compare posts in Analytics. Tags never go to a
+        platform. Errors: ``404 tag_not_found`` (an unknown id),
+        ``400 invalid_tags`` / ``too_many_tags``.
         """
         body = _create_body(
             content=content,
@@ -900,6 +963,7 @@ class AsyncPosts:
             draft=draft,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return await self._client.request("POST", "/posts/create", json=body)
 
@@ -941,12 +1005,13 @@ class AsyncPosts:
         video_cover: Optional[Mapping[str, Any]] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Optional[Mapping[str, Any]] = None,
+        tags: Optional[Sequence[TagRef]] = None,
     ) -> Any:
         """``POST /posts/create-and-publish`` - create and publish immediately.
 
         See :meth:`create` for the ``warnings`` list on X link posts, the
-        ``image_fit`` entries steered by ``media_fit`` and
-        ``comment_dm_automation``.
+        ``image_fit`` entries steered by ``media_fit``,
+        ``comment_dm_automation`` and ``tags``.
         """
         body = _create_body(
             content=content,
@@ -985,6 +1050,7 @@ class AsyncPosts:
             video_cover=video_cover,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return await self._client.request(
             "POST", "/posts/create-and-publish", json=body
@@ -1022,6 +1088,7 @@ class AsyncPosts:
         draft: Optional[bool] = None,
         media_fit: Optional[Mapping[str, str]] = None,
         comment_dm_automation: Union[Mapping[str, Any], None, NotGiven] = NOT_GIVEN,
+        tags: Union[Sequence[TagRef], None, NotGiven] = NOT_GIVEN,
     ) -> Any:
         """``PATCH /posts/{id}`` - update a draft or scheduled post.
 
@@ -1063,6 +1130,11 @@ class AsyncPosts:
         ``None`` removes that option (e.g. ``discord={"poll": None}``), an
         explicit ``discord=None`` removes every option, and leaving it out
         keeps them.
+
+        ``tags`` (ids or names, a new name becomes a tag) replaces the
+        post's tags; ``tags=None`` or ``tags=[]`` removes them all, and
+        leaving it out keeps them. An update with only ``tags`` works on
+        every post, published and failed ones included.
         """
         body = _update_body(
             content=content,
@@ -1093,6 +1165,7 @@ class AsyncPosts:
             draft=draft,
             media_fit=media_fit,
             comment_dm_automation=comment_dm_automation,
+            tags=tags,
         )
         return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
 

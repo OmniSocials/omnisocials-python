@@ -9,6 +9,8 @@ Verifies (without any network access):
   like backend/services/webhooks/webhookDispatcher.js
 - tampered bodies and stale timestamps are rejected
 - a missing API key raises AuthenticationError at construction time
+- tags calls (and the tag fields on posts and analytics) send the right
+  method, path, query and body (through httpx.MockTransport, sync and async)
 """
 
 import asyncio
@@ -76,8 +78,9 @@ EXPECTED = {
     ],
     "folders": ["list", "create", "update", "delete"],
     "hashtag_sets": ["list", "get", "create", "update", "delete"],
+    "tags": ["list", "create", "update", "delete", "apply"],
     "accounts": ["list", "get"],
-    "analytics": ["post", "posts", "overview", "accounts", "best_times"],
+    "analytics": ["post", "posts", "overview", "accounts", "best_times", "tags"],
     "locations": ["search", "validate"],
     "pinterest": ["list_products", "validate_product"],
     "automations": ["list", "get", "create", "update", "delete", "list_events"],
@@ -192,6 +195,159 @@ def check_construction_guards():
     ok(omnisocials.__version__ == _expected, f"__version__ matches pyproject.toml ({_expected})")
 
 
+class StubAPI:
+    """Answers requests from a script of statuses (the last one repeats) and
+    records them. ``"drop"`` raises a lost connection. Never touches the
+    network: it is plugged in through httpx.MockTransport."""
+
+    def __init__(self):
+        self.calls = []
+        self.answers = [200]
+
+    def reset(self, *answers):
+        self.calls = []
+        self.answers = list(answers)
+
+    def handler(self, request):
+        self.calls.append(request)
+        answer = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        if answer == "drop":
+            raise httpx.ConnectError("connection lost", request=request)
+        if answer >= 400:
+            # Retry-After: 0 keeps the retried reads fast.
+            return httpx.Response(
+                answer,
+                json={"error": {"code": "bad_gateway", "message": "upstream"}},
+                headers={"Retry-After": "0"},
+            )
+        return httpx.Response(answer, json={"data": {"ok": True}})
+
+    def body(self, index=-1):
+        return json.loads(self.calls[index].content)
+
+    def path(self, index=-1):
+        return self.calls[index].url.raw_path.decode()
+
+
+def check_tags_transport():
+    print("Tags transport (stubbed, sync):")
+    stub = StubAPI()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=0)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    client.tags.list()
+    ok(stub.calls[-1].method == "GET" and stub.path() == "/v1/tags", "tags.list GETs /tags")
+
+    client.tags.create(name="Question")
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/tags"
+        and stub.body() == {"name": "Question"},
+        "tags.create POSTs /tags with only the given keys",
+    )
+    client.tags.create(name="Behind the scenes", color="teal")
+    ok(stub.body() == {"name": "Behind the scenes", "color": "teal"}, "tags.create sends color")
+
+    client.tags.update(12, color="red")
+    ok(
+        stub.calls[-1].method == "PATCH" and stub.path() == "/v1/tags/12"
+        and stub.body() == {"color": "red"},
+        "tags.update PATCHes /tags/{id} with only the given keys",
+    )
+
+    result = client.tags.delete(12)
+    ok(
+        stub.calls[-1].method == "DELETE" and stub.path() == "/v1/tags/12"
+        and result == {"data": {"ok": True}},
+        "tags.delete DELETEs /tags/{id} and returns the body",
+    )
+
+    client.tags.apply(post_ids=["1024", 1025], add=["Question", 7], set=None)
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/tags/apply"
+        and stub.body() == {"post_ids": ["1024", "1025"], "add": ["Question", 7]},
+        "tags.apply POSTs /tags/apply, post ids as strings, None dropped",
+    )
+    client.tags.apply(post_ids=["1024"], set=[])
+    ok(stub.body() == {"post_ids": ["1024"], "set": []}, "tags.apply sends set=[] (clear)")
+
+    client.analytics.tags(start_date="2026-08-01", min_posts=3)
+    ok(
+        stub.calls[-1].method == "GET" and stub.path().startswith("/v1/analytics/tags")
+        and stub.calls[-1].url.params
+        == httpx.QueryParams({"start_date": "2026-08-01", "min_posts": "3"}),
+        "analytics.tags GETs /analytics/tags with only the given filters",
+    )
+
+    client.posts.list(tag=["Question", 7])
+    ok(
+        stub.calls[-1].url.params == httpx.QueryParams({"tag": "Question,7"}),
+        "posts.list joins a tag list with commas",
+    )
+    client.posts.list(tag=7)
+    ok(stub.calls[-1].url.params == httpx.QueryParams({"tag": "7"}), "posts.list takes a tag id")
+
+    client.analytics.overview(period="30d", tag="Question")
+    ok(
+        stub.calls[-1].url.params == httpx.QueryParams({"period": "30d", "tag": "Question"}),
+        "analytics.overview sends tag",
+    )
+
+    client.posts.create(content="Hi", tags=["Question", 7])
+    ok(stub.body() == {"content": "Hi", "tags": ["Question", 7]}, "posts.create sends tags")
+    client.posts.create_and_publish(content="Hi", tags=["Question"])
+    ok(stub.body()["tags"] == ["Question"], "posts.create_and_publish sends tags")
+
+    client.posts.update("55", tags=None)
+    ok(
+        stub.calls[-1].method == "PATCH" and stub.body() == {"tags": None},
+        "posts.update(tags=None) sends an explicit null (clears)",
+    )
+    client.posts.update("55", content="New text")
+    ok("tags" not in stub.body(), "posts.update leaves tags out when not given")
+    client.close()
+
+    print("Tags transport (stubbed, async):")
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=0)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+        await async_client.tags.list()
+        ok(stub.path() == "/v1/tags", "async tags.list GETs /tags")
+        await async_client.tags.create(name="Question", color="blue")
+        ok(stub.body() == {"name": "Question", "color": "blue"}, "async tags.create sends the body")
+        await async_client.tags.update("12", name="Questions")
+        ok(
+            stub.calls[-1].method == "PATCH" and stub.body() == {"name": "Questions"},
+            "async tags.update PATCHes /tags/{id}",
+        )
+        await async_client.tags.delete("12")
+        ok(stub.calls[-1].method == "DELETE", "async tags.delete DELETEs /tags/{id}")
+        await async_client.tags.apply(post_ids=["1"], remove=["Question"])
+        ok(
+            stub.body() == {"post_ids": ["1"], "remove": ["Question"]},
+            "async tags.apply sends remove",
+        )
+        await async_client.analytics.tags(platform="tiktok")
+        ok(
+            stub.calls[-1].url.params == httpx.QueryParams({"platform": "tiktok"}),
+            "async analytics.tags sends platform",
+        )
+        await async_client.posts.list(tag="Question")
+        ok(stub.calls[-1].url.params == httpx.QueryParams({"tag": "Question"}), "async posts.list sends tag")
+        await async_client.posts.update("55", tags=[])
+        ok(stub.body() == {"tags": []}, "async posts.update sends tags=[]")
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 def build_signature(secret, timestamp, raw_body):
     """Mirror backend/services/webhooks/webhookDispatcher.js signPayload():
     HMAC-SHA256 hex over `${timestamp}.${rawBody}`, header `t=<ts>,v1=<hex>`.
@@ -287,5 +443,6 @@ def check_webhook_verification():
 if __name__ == "__main__":
     check_client_surface()
     check_construction_guards()
+    check_tags_transport()
     check_webhook_verification()
     print(f"\nAll {CHECKS} checks passed.")

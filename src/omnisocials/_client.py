@@ -34,6 +34,7 @@ from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
 from .resources.pinterest import AsyncPinterest, Pinterest
 from .resources.posts import AsyncPosts, Posts
+from .resources.tags import AsyncTags, Tags
 from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
@@ -223,6 +224,7 @@ class OmniSocials(_BaseClient):
         self.media = Media(self)
         self.folders = Folders(self)
         self.hashtag_sets = HashtagSets(self)
+        self.tags = Tags(self)
         self.approval_workflows = ApprovalWorkflows(self)
         self.accounts = Accounts(self)
         self.analytics = Analytics(self)
@@ -319,6 +321,7 @@ class AsyncOmniSocials(_BaseClient):
         self.media = AsyncMedia(self)
         self.folders = AsyncFolders(self)
         self.hashtag_sets = AsyncHashtagSets(self)
+        self.tags = AsyncTags(self)
         self.approval_workflows = AsyncApprovalWorkflows(self)
         self.accounts = AsyncAccounts(self)
         self.analytics = AsyncAnalytics(self)

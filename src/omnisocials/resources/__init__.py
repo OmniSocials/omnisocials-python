@@ -12,6 +12,7 @@ from .locations import AsyncLocations, Locations
 from .media import AsyncMedia, Media
 from .pinterest import AsyncPinterest, Pinterest
 from .posts import AsyncPosts, Posts
+from .tags import AsyncTags, Tags
 from .webhooks import AsyncWebhooks, Webhooks
 
 __all__ = [
@@ -23,6 +24,8 @@ __all__ = [
     "AsyncFolders",
     "HashtagSets",
     "AsyncHashtagSets",
+    "Tags",
+    "AsyncTags",
     "ApprovalWorkflows",
     "AsyncApprovalWorkflows",
     "Accounts",
