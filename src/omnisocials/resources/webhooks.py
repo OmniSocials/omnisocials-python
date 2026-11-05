@@ -1,5 +1,6 @@
 """Webhooks resource: manage event subscriptions (post.scheduled,
-post.published, post.failed, post.approved, post.rejected)."""
+post.published, post.failed, post.approved, post.rejected, and
+ad.status_changed for ad campaigns)."""
 
 from __future__ import annotations
 
@@ -30,8 +31,12 @@ class Webhooks:
 
         ``url`` must be HTTPS. ``events`` is a non-empty subset of
         ``post.scheduled``, ``post.published``, ``post.failed``,
-        ``post.approved``, ``post.rejected``. The signing ``secret`` is only
-        returned once, in this response - store it.
+        ``post.approved``, ``post.rejected`` and ``ad.status_changed``. The
+        ``data`` of an ``ad.status_changed`` delivery is the campaign, not a
+        post: ``campaign_id``, ``workspace_id``, ``name``, ``platform``,
+        ``campaign_type``, ``status``, ``previous_status``,
+        ``external_campaign_id`` and ``budget``. The signing ``secret`` is
+        only returned once, in this response - store it.
         """
         return self._client.request(
             "POST", "/webhooks", json={"url": url, "events": list(events)}
@@ -82,7 +87,14 @@ class AsyncWebhooks:
     async def create(self, *, url: str, events: Sequence[str]) -> Any:
         """``POST /webhooks`` - create a webhook subscription.
 
-        The signing ``secret`` is only returned once, in this response.
+        ``url`` must be HTTPS. ``events`` is a non-empty subset of
+        ``post.scheduled``, ``post.published``, ``post.failed``,
+        ``post.approved``, ``post.rejected`` and ``ad.status_changed``. The
+        ``data`` of an ``ad.status_changed`` delivery is the campaign, not a
+        post: ``campaign_id``, ``workspace_id``, ``name``, ``platform``,
+        ``campaign_type``, ``status``, ``previous_status``,
+        ``external_campaign_id`` and ``budget``. The signing ``secret`` is
+        only returned once, in this response - store it.
         """
         return await self._client.request(
             "POST", "/webhooks", json={"url": url, "events": list(events)}

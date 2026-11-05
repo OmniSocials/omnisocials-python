@@ -125,8 +125,24 @@ class Automations:
         and platform, and on X at 15 per 15 minutes and 450 a day; an answer
         over a cap waits in a queue (``queued``) for up to an hour.
 
+        Follow first (Instagram only): ``actions["follow_gate"]`` =
+        ``{"enabled": True, "first_message": {"text", "button"},
+        "not_following": {"text", "button"}}`` sends the link
+        (``actions["dm"]["text"]``) only to people who follow the account.
+        A comment gets ``first_message`` as the private reply, with one
+        button; a tap makes OmniSocials ask Instagram whether the person
+        follows. A follower gets the link, anyone else gets
+        ``not_following`` with its button, and every later tap checks
+        again. A DM or a story reply is checked at once. When Instagram
+        gives no answer the link goes out anyway. Texts hold 640
+        characters, buttons 20; a text or button left out is the default.
+        ``None`` or ``False`` turns it off. The response carries the gate
+        with its texts (``None`` on Facebook and X) and
+        ``stats["followed"]``.
+
         Requires the ``automations:write`` scope (opt-in on the API key).
-        Errors: ``400 validation_error``, ``400 post_not_instagram``,
+        Errors: ``400 validation_error``, ``400 follow_gate_instagram_only``,
+        ``400 post_not_instagram``,
         ``400 post_not_facebook``, ``400 post_required``,
         ``404 post_not_found``, ``404 instagram_media_not_found``,
         ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
@@ -170,8 +186,10 @@ class Automations:
         new ``actions["dm"]["text"]`` keeps the public reply;
         ``limits={"stop_at": ...}`` keeps ``max_sends``.
         ``public_reply`` with ``"enabled": False`` or ``"variations": []``
-        turns the public reply off; ``limits={"max_sends": None}`` removes
-        that limit. ``status="paused"`` pauses and ``"active"`` resumes;
+        turns the public reply off; ``"follow_gate": {"enabled": False}``
+        turns Follow first off and keeps its texts, new texts keep the
+        switch, and ``"follow_gate": None`` turns it off;
+        ``limits={"max_sends": None}`` removes that limit. ``status="paused"`` pauses and ``"active"`` resumes;
         another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
         moves the automation to that post. The platform cannot change: a
         ``platform`` other than the automation's is a
@@ -215,8 +233,10 @@ class Automations:
 
         ``outcome`` filters on ``sent``, ``skipped``, ``failed``,
         ``pending``, ``queued`` (waits for a free slot under the send cap,
-        out within the hour) or ``opted_out`` (the person replied STOP on
-        X); ``limit`` is 1 to 100 (default 25), ``offset`` skips.
+        out within the hour), ``opted_out`` (the person replied STOP on
+        X) or ``waiting`` (Follow first: asked to follow, the link goes out
+        after the follow); ``limit`` is 1 to 100 (default 25), ``offset``
+        skips.
         Requires the ``automations:read`` scope.
 
         The response is not the plain list envelope: ``{"data": [...],
@@ -225,12 +245,15 @@ class Automations:
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
         ``reason_label`` (X adds the skip reasons ``dms_closed``,
-        ``no_credits``, ``opted_out`` and ``automation_off``), ``person``
+        ``no_credits``, ``opted_out`` and ``automation_off``; Follow first
+        adds ``already_waiting``), ``person``
         (``id``, ``username``; on Facebook the person's name, since
         Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
-        ``public_reply``, ``platform_message_id``, ``created_at`` and
-        ``sent_at``.
+        ``public_reply``, ``platform_message_id``, ``follow_gate`` (Follow
+        first: ``{"state": "waiting" | "done", "asked_at", "taps",
+        "followed", "checked", "after_ask"}``, else ``None``),
+        ``created_at`` and ``sent_at``.
         """
         return self._client.request(
             "GET",
@@ -316,8 +339,24 @@ class AsyncAutomations:
         and platform, and on X at 15 per 15 minutes and 450 a day; an answer
         over a cap waits in a queue (``queued``) for up to an hour.
 
+        Follow first (Instagram only): ``actions["follow_gate"]`` =
+        ``{"enabled": True, "first_message": {"text", "button"},
+        "not_following": {"text", "button"}}`` sends the link
+        (``actions["dm"]["text"]``) only to people who follow the account.
+        A comment gets ``first_message`` as the private reply, with one
+        button; a tap makes OmniSocials ask Instagram whether the person
+        follows. A follower gets the link, anyone else gets
+        ``not_following`` with its button, and every later tap checks
+        again. A DM or a story reply is checked at once. When Instagram
+        gives no answer the link goes out anyway. Texts hold 640
+        characters, buttons 20; a text or button left out is the default.
+        ``None`` or ``False`` turns it off. The response carries the gate
+        with its texts (``None`` on Facebook and X) and
+        ``stats["followed"]``.
+
         Requires the ``automations:write`` scope (opt-in on the API key).
-        Errors: ``400 validation_error``, ``400 post_not_instagram``,
+        Errors: ``400 validation_error``, ``400 follow_gate_instagram_only``,
+        ``400 post_not_instagram``,
         ``400 post_not_facebook``, ``400 post_required``,
         ``404 post_not_found``, ``404 instagram_media_not_found``,
         ``404 facebook_post_not_found``, ``409 instagram_not_connected``,
@@ -361,8 +400,10 @@ class AsyncAutomations:
         new ``actions["dm"]["text"]`` keeps the public reply;
         ``limits={"stop_at": ...}`` keeps ``max_sends``.
         ``public_reply`` with ``"enabled": False`` or ``"variations": []``
-        turns the public reply off; ``limits={"max_sends": None}`` removes
-        that limit. ``status="paused"`` pauses and ``"active"`` resumes;
+        turns the public reply off; ``"follow_gate": {"enabled": False}``
+        turns Follow first off and keeps its texts, new texts keep the
+        switch, and ``"follow_gate": None`` turns it off;
+        ``limits={"max_sends": None}`` removes that limit. ``status="paused"`` pauses and ``"active"`` resumes;
         another ``post_id`` / ``instagram_media_id`` / ``facebook_post_id``
         moves the automation to that post. The platform cannot change: a
         ``platform`` other than the automation's is a
@@ -408,8 +449,10 @@ class AsyncAutomations:
 
         ``outcome`` filters on ``sent``, ``skipped``, ``failed``,
         ``pending``, ``queued`` (waits for a free slot under the send cap,
-        out within the hour) or ``opted_out`` (the person replied STOP on
-        X); ``limit`` is 1 to 100 (default 25), ``offset`` skips.
+        out within the hour), ``opted_out`` (the person replied STOP on
+        X) or ``waiting`` (Follow first: asked to follow, the link goes out
+        after the follow); ``limit`` is 1 to 100 (default 25), ``offset``
+        skips.
         Requires the ``automations:read`` scope.
 
         The response is not the plain list envelope: ``{"data": [...],
@@ -418,12 +461,15 @@ class AsyncAutomations:
         events is left out). Each event carries ``kind`` (``comment``,
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
         ``reason_label`` (X adds the skip reasons ``dms_closed``,
-        ``no_credits``, ``opted_out`` and ``automation_off``), ``person``
+        ``no_credits``, ``opted_out`` and ``automation_off``; Follow first
+        adds ``already_waiting``), ``person``
         (``id``, ``username``; on Facebook the person's name, since
         Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
-        ``public_reply``, ``platform_message_id``, ``created_at`` and
-        ``sent_at``.
+        ``public_reply``, ``platform_message_id``, ``follow_gate`` (Follow
+        first: ``{"state": "waiting" | "done", "asked_at", "taps",
+        "followed", "checked", "after_ask"}``, else ``None``),
+        ``created_at`` and ``sent_at``.
         """
         return await self._client.request(
             "GET",

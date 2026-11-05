@@ -198,10 +198,15 @@ class Posts:
         status: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         tag: Optional[TagFilter] = None,
     ) -> Any:
         """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow).
 
+        ``start_date`` / ``end_date`` keep posts whose ``schedule_at`` falls in the period, both inclusive:
+        "YYYY-MM-DD" (a UTC day), "YYYY-MM" (a month) or an ISO 8601 datetime.
+        With a range the posts come in calendar order (earliest first).
 
         ``tag`` (a tag id or name, or a list of them) keeps the posts with
         any of those tags; an unknown tag is a ``404 tag_not_found``. Every
@@ -216,6 +221,8 @@ class Posts:
                 "status": status,
                 "limit": limit,
                 "offset": offset,
+                "start_date": start_date,
+                "end_date": end_date,
                 "tag": tag_query(tag),
             },
         )
@@ -383,7 +390,9 @@ class Posts:
         ["guide"], "match": "word"}, "actions": {"dm": {"text": "..."},
         "public_reply": {"enabled": True, "variations": [...]}}, "limits":
         {"max_sends": 500}, "platforms": ["instagram", "facebook"]}`` (see
-        ``client.automations.create()`` for the fields). ``platforms`` makes
+        ``client.automations.create()`` for the fields, also
+        ``actions["follow_gate"]``, Follow first, which applies to the
+        Instagram automation only). ``platforms`` makes
         one automation per listed channel; each must be a channel of the
         post. Without it: Instagram when the post goes there, else Facebook.
         Needs the ``automations:write`` scope on the key (``403
@@ -722,10 +731,15 @@ class AsyncPosts:
         status: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         tag: Optional[TagFilter] = None,
     ) -> Any:
         """``GET /posts`` - list posts (status: draft, in_approval, scheduled, posting, posted, failed, warning; in_approval = waiting for a reviewer in an approval workflow).
 
+        ``start_date`` / ``end_date`` keep posts whose ``schedule_at`` falls in the period, both inclusive:
+        "YYYY-MM-DD" (a UTC day), "YYYY-MM" (a month) or an ISO 8601 datetime.
+        With a range the posts come in calendar order (earliest first).
 
         ``tag`` (a tag id or name, or a list of them) keeps the posts with
         any of those tags; an unknown tag is a ``404 tag_not_found``. Every
@@ -740,6 +754,8 @@ class AsyncPosts:
                 "status": status,
                 "limit": limit,
                 "offset": offset,
+                "start_date": start_date,
+                "end_date": end_date,
                 "tag": tag_query(tag),
             },
         )
@@ -906,7 +922,9 @@ class AsyncPosts:
         ["guide"], "match": "word"}, "actions": {"dm": {"text": "..."},
         "public_reply": {"enabled": True, "variations": [...]}}, "limits":
         {"max_sends": 500}, "platforms": ["instagram", "facebook"]}`` (see
-        ``client.automations.create()`` for the fields). ``platforms`` makes
+        ``client.automations.create()`` for the fields, also
+        ``actions["follow_gate"]``, Follow first, which applies to the
+        Instagram automation only). ``platforms`` makes
         one automation per listed channel; each must be a channel of the
         post. Without it: Instagram when the post goes there, else Facebook.
         Needs the ``automations:write`` scope on the key (``403

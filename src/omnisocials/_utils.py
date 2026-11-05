@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional, Sequence, Union
 
-__all__ = ["NotGiven", "NOT_GIVEN", "drop_none", "join_list"]
+__all__ = ["NotGiven", "NOT_GIVEN", "RATE_LIMIT_ONLY", "drop_none", "join_list"]
 
 
 class NotGiven:
@@ -30,6 +30,11 @@ class NotGiven:
 
 
 NOT_GIVEN = NotGiven()
+
+# ``request(..., retry=RATE_LIMIT_ONLY)``: retry only a 429. A call that can
+# start ad spend uses it: after a 5xx, a timeout or a lost connection the first
+# attempt may have gone through, so it is never sent again.
+RATE_LIMIT_ONLY = "rate_limit"
 
 
 def drop_none(mapping: Mapping[str, Any]) -> Dict[str, Any]:

@@ -11,6 +11,12 @@ Verifies (without any network access):
 - a missing API key raises AuthenticationError at construction time
 - tags calls (and the tag fields on posts and analytics) send the right
   method, path, query and body (through httpx.MockTransport, sync and async)
+- limits and feature request calls send the right method, path, query and
+  body, return the outcome, and a 409 not_requestable keeps the limit in the
+  error body (through httpx.MockTransport, sync and async)
+- ads calls send the right method, path and body, and a call that can start
+  ad spend is sent once after a 502 or a lost connection while a read is
+  retried (through httpx.MockTransport, sync and async)
 """
 
 import asyncio
@@ -21,6 +27,8 @@ import json
 import os
 import sys
 import time
+
+import httpx
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -84,8 +92,31 @@ EXPECTED = {
     "locations": ["search", "validate"],
     "pinterest": ["list_products", "validate_product"],
     "automations": ["list", "get", "create", "update", "delete", "list_events"],
+    "ads": [
+        "list_accounts",
+        "capabilities",
+        "list",
+        "get",
+        "boost",
+        "boost_multi",
+        "create",
+        "update",
+        "activate",
+        "activate_multi",
+        "pause",
+        "resume",
+        "delete",
+        "overview",
+        "suggestions",
+        "research_keywords",
+        "keyword_metrics",
+    ],
     "webhooks": ["list", "get", "create", "update", "delete", "rotate_secret"],
+    "limits": ["list"],
+    "feature_requests": ["create", "list", "get"],
 }
+
+DRAFT_METHODS = ["defaults", "create", "get", "update", "delete", "attach_account", "launch"]
 
 
 def check_client_surface():
@@ -101,6 +132,12 @@ def check_client_surface():
                 not inspect.iscoroutinefunction(fn),
                 f"client.{resource}.{method} is sync",
             )
+    for method in DRAFT_METHODS:
+        fn = getattr(client.ads.drafts, method, None)
+        ok(
+            callable(fn) and not inspect.iscoroutinefunction(fn),
+            f"client.ads.drafts.{method} is a sync method",
+        )
     ok(callable(client.health), "client.health is callable")
     ok(callable(client.close), "client.close is callable")
     with OmniSocials(api_key="omsk_test_x") as ctx:
@@ -118,6 +155,12 @@ def check_client_surface():
                 inspect.iscoroutinefunction(fn),
                 f"async client.{resource}.{method} is async",
             )
+    for method in DRAFT_METHODS:
+        fn = getattr(async_client.ads.drafts, method, None)
+        ok(
+            inspect.iscoroutinefunction(fn),
+            f"async client.ads.drafts.{method} is async",
+        )
     ok(
         inspect.iscoroutinefunction(async_client.health),
         "async client.health is a coroutine function",
@@ -227,6 +270,23 @@ class StubAPI:
 
     def path(self, index=-1):
         return self.calls[index].url.raw_path.decode()
+
+
+DRAFT = {
+    "name": "Autumn sale",
+    "objective": "traffic",
+    "platforms": ["meta", {"platform": "linkedin", "budget_amount": 20}],
+    "budget": {"amount": 10, "currency": "EUR"},
+    "schedule": {"duration_days": None},
+    "targeting": {"countries": ["NL", "BE"], "automatic_audience": True},
+    "ads": [
+        {
+            "media": [{"url": "https://example.com/sale.jpg", "type": "image"}],
+            "primary_text": "30% off everything this week",
+            "link": "https://example.com/sale",
+        }
+    ],
+}
 
 
 def check_tags_transport():
@@ -348,6 +408,329 @@ def check_tags_transport():
     asyncio.run(run_async())
 
 
+FEATURE_REQUEST = {
+    "id": 412,
+    "title": "Post to a topic of a Telegram group",
+    "summary": "Post our daily update to the Announcements topic of our Telegram group.",
+    "status": "open",
+    "team_answer": None,
+    "team_replies": [],
+    "votes_count": 1,
+    "limit_id": "telegram.forum_topics",
+    "platform": "telegram",
+    "area": "posts",
+    "source": "api",
+    "created_at": "2026-11-04T10:00:00.000Z",
+    "updated_at": "2026-11-04T10:00:00.000Z",
+    "completed_at": None,
+}
+
+PLATFORM_LIMIT = {
+    "id": "tiktok.delete",
+    "kind": "platform",
+    "kind_label": "The platform does not allow it",
+    "area": "posts",
+    "platforms": ["tiktok"],
+    "title": "Delete a TikTok video",
+    "says": "TikTok's API cannot delete a video.",
+    "instead": "Delete the video in the TikTok app.",
+    "requestable": False,
+}
+
+
+class FeatureRequestStub:
+    """Answers like the /limits and /feature-requests routes and records the
+    requests (through httpx.MockTransport, no network)."""
+
+    def __init__(self):
+        self.calls = []
+
+    def handler(self, request):
+        self.calls.append(request)
+        path = request.url.raw_path.decode().split("?")[0]
+        body = json.loads(request.content) if request.content else {}
+        if path == "/v1/limits":
+            return httpx.Response(
+                200, json={"data": [PLATFORM_LIMIT], "kinds": {"platform": "The platform does not allow it"}}
+            )
+        if request.method == "POST" and body.get("limit_id") == "tiktok.delete":
+            return httpx.Response(
+                409,
+                json={
+                    "error": {
+                        "code": "not_requestable",
+                        "message": "TikTok's API cannot delete a video. A request cannot change this, so nothing was sent.",
+                        "limit": PLATFORM_LIMIT,
+                    }
+                },
+            )
+        if request.method == "POST" and body.get("summary", "").startswith("Again"):
+            return httpx.Response(200, json={"outcome": "already_requested", "data": FEATURE_REQUEST})
+        if request.method == "POST":
+            return httpx.Response(201, json={"outcome": "voted", "data": FEATURE_REQUEST})
+        if path == "/v1/feature-requests":
+            return httpx.Response(200, json={"data": [FEATURE_REQUEST]})
+        return httpx.Response(200, json={"data": FEATURE_REQUEST})
+
+    def last(self):
+        return self.calls[-1]
+
+    def path(self):
+        return self.last().url.raw_path.decode()
+
+    def body(self):
+        return json.loads(self.last().content)
+
+
+def check_feature_requests_transport():
+    print("Limits and feature requests transport (stubbed, sync):")
+    stub = FeatureRequestStub()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=0)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    limits = client.limits.list(platform="tiktok", area="posts")
+    ok(
+        stub.last().method == "GET" and stub.path().startswith("/v1/limits")
+        and stub.last().url.params == httpx.QueryParams({"platform": "tiktok", "area": "posts"}),
+        "limits.list GETs /limits with platform and area",
+    )
+    ok(
+        limits["data"][0]["requestable"] is False and "platform" in limits["kinds"],
+        "limits.list returns data and kinds",
+    )
+    client.limits.list()
+    ok(stub.path() == "/v1/limits", "limits.list() without filters sends no query")
+
+    created = client.feature_requests.create(
+        summary="Post our daily update to the Announcements topic of our Telegram group.",
+        platform="telegram",
+        limit_id="telegram.forum_topics",
+    )
+    ok(
+        stub.last().method == "POST" and stub.path() == "/v1/feature-requests"
+        and stub.body()
+        == {
+            "summary": "Post our daily update to the Announcements topic of our Telegram group.",
+            "platform": "telegram",
+            "limit_id": "telegram.forum_topics",
+        },
+        "feature_requests.create POSTs only the given keys (never source)",
+    )
+    ok(
+        created["outcome"] == "voted" and created["data"]["id"] == 412,
+        "feature_requests.create returns outcome and data",
+    )
+    again = client.feature_requests.create(summary="Again: post to a Telegram topic, please.")
+    ok(again["outcome"] == "already_requested", "a 200 already_requested keeps the outcome")
+
+    try:
+        client.feature_requests.create(
+            summary="Delete my TikTok videos from OmniSocials.", limit_id="tiktok.delete"
+        )
+        ok(False, "a not_requestable limit raises")
+    except APIError as error:
+        ok(
+            error.status == 409 and error.code == "not_requestable"
+            and error.body["error"]["limit"]["instead"] == "Delete the video in the TikTok app.",
+            "409 not_requestable raises APIError with the limit in the body",
+        )
+
+    mine = client.feature_requests.list()
+    ok(
+        stub.last().method == "GET" and stub.path() == "/v1/feature-requests"
+        and mine["data"][0]["status"] == "open",
+        "feature_requests.list GETs /feature-requests",
+    )
+    one = client.feature_requests.get(412)
+    ok(
+        stub.path() == "/v1/feature-requests/412" and one["data"]["limit_id"] == "telegram.forum_topics",
+        "feature_requests.get GETs /feature-requests/{id}",
+    )
+    client.close()
+
+    print("Limits and feature requests transport (stubbed, async):")
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=0)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+        await async_client.limits.list(area="inbox")
+        ok(
+            stub.last().url.params == httpx.QueryParams({"area": "inbox"}),
+            "async limits.list sends area",
+        )
+        result = await async_client.feature_requests.create(
+            summary="Reply to Google reviews from the inbox.", area="inbox", title="Google review replies"
+        )
+        ok(
+            stub.body()
+            == {"summary": "Reply to Google reviews from the inbox.", "title": "Google review replies", "area": "inbox"}
+            and result["outcome"] == "voted",
+            "async feature_requests.create sends the body and returns the outcome",
+        )
+        await async_client.feature_requests.list()
+        ok(stub.path() == "/v1/feature-requests", "async feature_requests.list GETs /feature-requests")
+        await async_client.feature_requests.get("412")
+        ok(stub.path() == "/v1/feature-requests/412", "async feature_requests.get GETs /feature-requests/{id}")
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
+def money_calls(ads):
+    """Every ads call that can start or raise spend, with valid arguments."""
+    return {
+        "drafts.launch": lambda: ads.drafts.launch("g-1", confirm_budget_amount=10),
+        "activate": lambda: ads.activate(7, 25),
+        "activate_multi": lambda: ads.activate_multi([7, 8], 25),
+        "resume": lambda: ads.resume(7),
+        "update": lambda: ads.update(7, budget={"amount": 50, "currency": "EUR"}, confirm_budget_amount=50),
+    }
+
+
+def check_ads_transport():
+    print("Ads transport (stubbed, sync):")
+    stub = StubAPI()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=2)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    stub.reset(201)
+    client.ads.drafts.create(**DRAFT)
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/ads/drafts",
+        "ads.drafts.create POSTs /ads/drafts",
+    )
+    ok(stub.body() == DRAFT, "ads.drafts.create sends the draft (nested None kept)")
+
+    stub.reset(200)
+    client.ads.drafts.update("g 1/x", **DRAFT)
+    ok(
+        stub.calls[-1].method == "PUT" and stub.path() == "/v1/ads/drafts/g%201%2Fx",
+        "ads.drafts.update PUTs /ads/drafts/{group_id} with the id encoded",
+    )
+    ok(stub.body() == DRAFT, "ads.drafts.update sends the full body")
+
+    client.ads.drafts.launch("g-1", confirm_budget_amount=10)
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/ads/drafts/g-1/launch",
+        "ads.drafts.launch POSTs /ads/drafts/{group_id}/launch",
+    )
+    ok(stub.body() == {"confirm_budget_amount": 10}, "ads.drafts.launch sends the confirmed amount")
+    client.ads.drafts.launch("g-1", confirm_budget_amounts={"7": 10, "8": 20})
+    ok(
+        stub.body() == {"confirm_budget_amounts": {"7": 10, "8": 20}},
+        "ads.drafts.launch sends per campaign amounts",
+    )
+
+    client.ads.activate(7, 25)
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/ads/campaigns/7/activate",
+        "ads.activate POSTs /ads/campaigns/{id}/activate",
+    )
+    ok(stub.body() == {"confirm_budget_amount": 25}, "ads.activate sends confirm_budget_amount")
+
+    client.ads.activate("51", 25)
+    ok(
+        stub.path() == "/v1/ads/campaigns/51/activate",
+        "ads.activate takes the id as a string (the API sends ids as strings)",
+    )
+
+    client.ads.activate_multi([7, 8], 25)
+    ok(
+        stub.path() == "/v1/ads/campaigns/activate-multi"
+        and stub.body() == {"campaign_ids": [7, 8], "confirm_budget_amount": 25},
+        "ads.activate_multi sends campaign_ids and confirm_budget_amount",
+    )
+
+    client.ads.drafts.attach_account("g-1", platform="meta", ad_account_id=3)
+    ok(
+        stub.path() == "/v1/ads/drafts/g-1/account"
+        and stub.body() == {"platform": "meta", "ad_account_id": 3},
+        "ads.drafts.attach_account POSTs the platform and the ad account",
+    )
+
+    client.ads.list(status="active", limit=5)
+    ok(
+        stub.calls[-1].method == "GET"
+        and stub.calls[-1].url.params == httpx.QueryParams({"status": "active", "limit": "5"}),
+        "ads.list sends only the given filters",
+    )
+
+    for name, call in money_calls(client.ads).items():
+        stub.reset(502)
+        try:
+            call()
+        except ServerError:
+            pass
+        else:
+            raise AssertionError(f"FAILED: ads.{name} did not raise on a 502")
+        ok(len(stub.calls) == 1, f"ads.{name} after a 502 is sent exactly once")
+
+    stub.reset("drop")
+    try:
+        client.ads.drafts.launch("g-1", confirm_budget_amount=10)
+    except APIConnectionError:
+        pass
+    else:
+        raise AssertionError("FAILED: a lost connection did not raise")
+    ok(len(stub.calls) == 1, "ads.drafts.launch after a lost connection is sent exactly once")
+
+    stub.reset(429, 200)
+    client.ads.activate(7, 25)
+    ok(len(stub.calls) == 2, "ads.activate after a 429 is retried")
+
+    stub.reset(502, 200)
+    result = client.ads.capabilities()
+    ok(
+        len(stub.calls) == 2 and result == {"data": {"ok": True}},
+        "ads.capabilities (a read) after a 502 is retried",
+    )
+    client.close()
+
+    print("Ads transport (stubbed, async):")
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=2)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+
+        stub.reset(200)
+        await async_client.ads.drafts.update("g-1", **DRAFT)
+        ok(
+            stub.calls[-1].method == "PUT" and stub.path() == "/v1/ads/drafts/g-1",
+            "async ads.drafts.update PUTs /ads/drafts/{group_id}",
+        )
+
+        for name, call in money_calls(async_client.ads).items():
+            stub.reset(502)
+            try:
+                await call()
+            except ServerError:
+                pass
+            else:
+                raise AssertionError(f"FAILED: async ads.{name} did not raise on a 502")
+            ok(len(stub.calls) == 1, f"async ads.{name} after a 502 is sent exactly once")
+
+        stub.reset(502, 200)
+        await async_client.ads.capabilities()
+        ok(len(stub.calls) == 2, "async ads.capabilities after a 502 is retried")
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 def build_signature(secret, timestamp, raw_body):
     """Mirror backend/services/webhooks/webhookDispatcher.js signPayload():
     HMAC-SHA256 hex over `${timestamp}.${rawBody}`, header `t=<ts>,v1=<hex>`.
@@ -402,6 +785,31 @@ def check_webhook_verification():
         "post.rejected event keeps its approval object",
     )
 
+    ad_event = {
+        "id": "b1f2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+        "type": "ad.status_changed",
+        "created_at": "2026-07-13T10:00:05Z",
+        "data": {
+            "campaign_id": 42,
+            "workspace_id": "456",
+            "name": "Boost: Summer launch post",
+            "platform": "meta",
+            "campaign_type": "boost",
+            "status": "active",
+            "previous_status": "pending_review",
+            "external_campaign_id": "23851234567890123",
+            "budget": {"type": "daily", "amount": 10, "currency": "EUR"},
+        },
+    }
+    ad_body = json.dumps(ad_event)
+    parsed_ad = verify_webhook_signature(
+        ad_body, build_signature(secret, timestamp, ad_body), secret
+    )
+    ok(
+        parsed_ad["type"] == "ad.status_changed" and parsed_ad["data"] == ad_event["data"],
+        "ad.status_changed event verifies and keeps its campaign data",
+    )
+
     tampered = raw_body.replace("posted", "hacked")
     try:
         verify_webhook_signature(tampered, signature, secret)
@@ -444,5 +852,7 @@ if __name__ == "__main__":
     check_client_surface()
     check_construction_guards()
     check_tags_transport()
+    check_feature_requests_transport()
+    check_ads_transport()
     check_webhook_verification()
     print(f"\nAll {CHECKS} checks passed.")

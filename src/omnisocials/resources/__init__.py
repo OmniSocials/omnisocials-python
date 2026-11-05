@@ -1,13 +1,16 @@
 """Resource namespaces for the OmniSocials client."""
 
 from .accounts import Accounts, AsyncAccounts
+from .ads import AdDrafts, Ads, AsyncAdDrafts, AsyncAds
 from .analytics import Analytics, AsyncAnalytics
 from .approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .audio import AsyncAudio, Audio
 from .automations import AsyncAutomations, Automations
+from .feature_requests import AsyncFeatureRequests, FeatureRequests
 from .folders import AsyncFolders, Folders
 from .hashtag_sets import AsyncHashtagSets, HashtagSets
 from .inbox import AsyncInbox, Inbox
+from .limits import AsyncLimits, Limits
 from .locations import AsyncLocations, Locations
 from .media import AsyncMedia, Media
 from .pinterest import AsyncPinterest, Pinterest
@@ -26,6 +29,10 @@ __all__ = [
     "AsyncHashtagSets",
     "Tags",
     "AsyncTags",
+    "Limits",
+    "AsyncLimits",
+    "FeatureRequests",
+    "AsyncFeatureRequests",
     "ApprovalWorkflows",
     "AsyncApprovalWorkflows",
     "Accounts",
@@ -40,6 +47,10 @@ __all__ = [
     "AsyncPinterest",
     "Automations",
     "AsyncAutomations",
+    "Ads",
+    "AsyncAds",
+    "AdDrafts",
+    "AsyncAdDrafts",
     "Inbox",
     "AsyncInbox",
     "Webhooks",

@@ -291,8 +291,9 @@ class Inbox:
         )
 
     def delete_message(self, message_id: str) -> Any:
-        """``DELETE /inbox/messages/{id}`` - delete a comment someone left on
-        one of your posts, on the platform and from the inbox.
+        """``DELETE /inbox/messages/{id}`` - delete a comment on one of your
+        posts, on the platform and from the inbox: a comment someone left, or
+        one of your own replies (``direction == "outgoing"``).
 
         Facebook, Instagram and TikTok comments only: YouTube's API does not
         let a channel delete other people's comments, hide those instead
@@ -615,8 +616,9 @@ class AsyncInbox:
         )
 
     async def delete_message(self, message_id: str) -> Any:
-        """``DELETE /inbox/messages/{id}`` - delete a comment someone left on
-        one of your posts, on the platform and from the inbox.
+        """``DELETE /inbox/messages/{id}`` - delete a comment on one of your
+        posts, on the platform and from the inbox: a comment someone left, or
+        one of your own replies (``direction == "outgoing"``).
 
         Facebook, Instagram and TikTok comments only: YouTube's API does not
         let a channel delete other people's comments, hide those instead

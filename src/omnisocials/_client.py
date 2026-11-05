@@ -21,15 +21,18 @@ from ._errors import (
     ServerError,
     ValidationError,
 )
-from ._utils import NOT_GIVEN, NotGiven
+from ._utils import NOT_GIVEN, RATE_LIMIT_ONLY, NotGiven
 from .resources.accounts import Accounts, AsyncAccounts
+from .resources.ads import Ads, AsyncAds
 from .resources.analytics import Analytics, AsyncAnalytics
 from .resources.audio import AsyncAudio, Audio
 from .resources.automations import AsyncAutomations, Automations
+from .resources.feature_requests import AsyncFeatureRequests, FeatureRequests
 from .resources.folders import AsyncFolders, Folders
 from .resources.hashtag_sets import AsyncHashtagSets, HashtagSets
 from .resources.approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .resources.inbox import AsyncInbox, Inbox
+from .resources.limits import AsyncLimits, Limits
 from .resources.locations import AsyncLocations, Locations
 from .resources.media import AsyncMedia, Media
 from .resources.pinterest import AsyncPinterest, Pinterest
@@ -39,7 +42,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.14.0"
+VERSION = "0.15.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -182,8 +185,14 @@ class _BaseClient:
         raise _error_from_response(response)
 
     @staticmethod
-    def _should_retry(response: httpx.Response) -> Tuple[bool, Optional[float]]:
-        if response.status_code in _RETRY_STATUSES or response.status_code >= 500:
+    def _should_retry(
+        response: httpx.Response, retry: Optional[str] = None
+    ) -> Tuple[bool, Optional[float]]:
+        status = response.status_code
+        if status == 429 or (
+            retry != RATE_LIMIT_ONLY
+            and (status in _RETRY_STATUSES or status >= 500)
+        ):
             return True, _parse_retry_after(response, _parse_body(response))
         return False, None
 
@@ -232,8 +241,11 @@ class OmniSocials(_BaseClient):
         self.audio = Audio(self)
         self.pinterest = Pinterest(self)
         self.automations = Automations(self)
+        self.ads = Ads(self)
         self.inbox = Inbox(self)
         self.webhooks = Webhooks(self)
+        self.limits = Limits(self)
+        self.feature_requests = FeatureRequests(self)
 
     # -- lifecycle ---------------------------------------------------------
     def close(self) -> None:
@@ -255,6 +267,7 @@ class OmniSocials(_BaseClient):
         json: Optional[Mapping[str, Any]] = None,
         files: Optional[Mapping[str, Any]] = None,
         data: Optional[Mapping[str, Any]] = None,
+        retry: Optional[str] = None,
     ) -> Any:
         url = self._build_url(path)
         params = _serialize_query(query)
@@ -267,12 +280,13 @@ class OmniSocials(_BaseClient):
                 )
             except httpx.TransportError as exc:
                 last_exc = exc
-                if attempt >= self.max_retries:
+                # Not sent again when the call may have started ad spend.
+                if retry == RATE_LIMIT_ONLY or attempt >= self.max_retries:
                     break
                 time.sleep(_backoff_delay(attempt, None))
                 continue
 
-            should_retry, retry_after = self._should_retry(response)
+            should_retry, retry_after = self._should_retry(response, retry)
             if should_retry and attempt < self.max_retries:
                 time.sleep(_backoff_delay(attempt, retry_after))
                 continue
@@ -329,8 +343,11 @@ class AsyncOmniSocials(_BaseClient):
         self.audio = AsyncAudio(self)
         self.pinterest = AsyncPinterest(self)
         self.automations = AsyncAutomations(self)
+        self.ads = AsyncAds(self)
         self.inbox = AsyncInbox(self)
         self.webhooks = AsyncWebhooks(self)
+        self.limits = AsyncLimits(self)
+        self.feature_requests = AsyncFeatureRequests(self)
 
     # -- lifecycle ---------------------------------------------------------
     async def aclose(self) -> None:
@@ -355,6 +372,7 @@ class AsyncOmniSocials(_BaseClient):
         json: Optional[Mapping[str, Any]] = None,
         files: Optional[Mapping[str, Any]] = None,
         data: Optional[Mapping[str, Any]] = None,
+        retry: Optional[str] = None,
     ) -> Any:
         url = self._build_url(path)
         params = _serialize_query(query)
@@ -367,12 +385,13 @@ class AsyncOmniSocials(_BaseClient):
                 )
             except httpx.TransportError as exc:
                 last_exc = exc
-                if attempt >= self.max_retries:
+                # Not sent again when the call may have started ad spend.
+                if retry == RATE_LIMIT_ONLY or attempt >= self.max_retries:
                     break
                 await asyncio.sleep(_backoff_delay(attempt, None))
                 continue
 
-            should_retry, retry_after = self._should_retry(response)
+            should_retry, retry_after = self._should_retry(response, retry)
             if should_retry and attempt < self.max_retries:
                 await asyncio.sleep(_backoff_delay(attempt, retry_after))
                 continue
