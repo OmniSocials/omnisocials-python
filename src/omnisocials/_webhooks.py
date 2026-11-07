@@ -5,6 +5,9 @@ OmniSocials signs every webhook delivery with HMAC-SHA256 (Stripe-style):
 - Header: ``X-OmniSocials-Signature: t=<unix>,v1=<hex>``
 - Signed value: ``"{timestamp}.{raw_body}"`` (UTF-8), keyed with the
   webhook's secret, hex digest.
+- For 24 hours after a secret rotation, deliveries also carry
+  ``X-OmniSocials-Signature-Previous``: the same format, timestamp and body,
+  signed with the old secret.
 """
 
 from __future__ import annotations
@@ -28,12 +31,21 @@ def verify_webhook_signature(
 ) -> Dict[str, Any]:
     """Verify an OmniSocials webhook delivery and return the parsed event.
 
+    Secret rotation: for 24 hours after ``webhooks.rotate_secret()``, every
+    delivery carries ``X-OmniSocials-Signature`` (signed with the new
+    secret) and ``X-OmniSocials-Signature-Previous`` (signed with the old
+    secret). To keep accepting deliveries while you switch secrets, verify
+    ``X-OmniSocials-Signature`` with the new secret and, when that raises,
+    verify ``X-OmniSocials-Signature-Previous`` with the old secret.
+
     Args:
         payload: The raw request body, exactly as received (``str`` or
             ``bytes``). Do not parse and re-serialize it first - the
             signature is over the raw bytes.
         signature: The ``X-OmniSocials-Signature`` header value, of the form
-            ``t=<unix>,v1=<hex>``.
+            ``t=<unix>,v1=<hex>``. For 24 hours after a secret rotation,
+            pass the ``X-OmniSocials-Signature-Previous`` value here with
+            the old secret when the new secret does not match.
         secret: The webhook's signing secret (returned once when the webhook
             is created, or via rotate_secret).
         tolerance: Maximum allowed age (and future skew) of the signed

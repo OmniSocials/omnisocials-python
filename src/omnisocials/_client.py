@@ -42,7 +42,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.15.0"
+VERSION = "0.16.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2

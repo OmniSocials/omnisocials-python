@@ -14,6 +14,10 @@ Verifies (without any network access):
 - limits and feature request calls send the right method, path, query and
   body, return the outcome, and a 409 not_requestable keeps the limit in the
   error body (through httpx.MockTransport, sync and async)
+- posts.approve / posts.reject send step_order only when given, reject
+  keeps comment, and a 409 step_changed keeps current_step_order (through
+  httpx.MockTransport, sync and async)
+- the X-OmniSocials-Signature-Previous value verifies with the old secret
 - ads calls send the right method, path and body, and a call that can start
   ad spend is sent once after a 502 or a lost connection while a read is
   retried (through httpx.MockTransport, sync and async)
@@ -99,7 +103,6 @@ EXPECTED = {
         "get",
         "boost",
         "boost_multi",
-        "create",
         "update",
         "activate",
         "activate_multi",
@@ -117,6 +120,52 @@ EXPECTED = {
 }
 
 DRAFT_METHODS = ["defaults", "create", "get", "update", "delete", "attach_account", "launch"]
+
+# The Ads API parity sub-resources (2026-11-05): one method per route of
+# backend/routes/api/v1/adsParity.js (108 with bulk_status and duplicate).
+ADS_PARITY = {
+    "objects": ["tree", "get", "update", "set_status", "duplicate", "import_status", "start_import", "list_external", "get_external"],
+    "campaign_ads": ["list", "add", "get", "set_status", "review"],
+    "comments": ["list", "reply", "hide", "delete"],
+    "targeting": ["search", "browse", "reach_estimate", "bid_suggestions"],
+    "audiences": ["list", "create", "get", "update", "delete", "add_members", "remove_members", "add_companies"],
+    "lead_forms": ["list", "create", "get", "update", "delete", "send_test_lead"],
+    "leads": ["list", "counts", "update"],
+    "conversions": ["destinations", "goals", "create_custom", "send_events"],
+    "insights": ["query", "campaign", "ad", "timeline", "performance", "alerts"],
+    "reports": ["list", "start", "get"],
+    "rules": ["list", "create", "templates", "preview", "activity", "undo", "get", "update", "delete", "preview_saved", "runs"],
+    "results": ["list", "upload", "totals", "metrics", "put_metric"],
+    "media": ["list", "upload", "get", "delete"],
+    "previews": ["create", "for_ad"],
+    "partnership": ["list_content", "list_permissions", "set_permission"],
+    "accounts": ["identities", "health", "finance", "update_settings", "list_users", "add_user", "remove_user", "activity", "businesses", "dsa", "hierarchy"],
+    "reach_frequency": ["create", "get", "cancel", "reserve"],
+    "studies": ["list", "create"],
+    "budget_schedules": ["list", "create", "delete"],
+    "google": ["search_terms", "recommendations", "keywords", "assets", "shared_budgets", "bid_strategies", "ad_schedule", "labels", "local_services_leads"],
+}
+ADS_PARITY_TOP = ["bulk_status", "duplicate"]
+assert sum(len(m) for m in ADS_PARITY.values()) + len(ADS_PARITY_TOP) == 108
+
+
+def check_ads_parity_surface(ads, want_async):
+    kind = "async" if want_async else "sync"
+    for sub, methods in ADS_PARITY.items():
+        namespace = getattr(ads, sub, None)
+        ok(namespace is not None, f"{kind} client.ads.{sub} exists")
+        for method in methods:
+            fn = getattr(namespace, method, None)
+            ok(
+                callable(fn) and inspect.iscoroutinefunction(fn) == want_async,
+                f"{kind} client.ads.{sub}.{method} is a {kind} method",
+            )
+    for method in ADS_PARITY_TOP:
+        fn = getattr(ads, method, None)
+        ok(
+            callable(fn) and inspect.iscoroutinefunction(fn) == want_async,
+            f"{kind} client.ads.{method} is a {kind} method",
+        )
 
 
 def check_client_surface():
@@ -138,6 +187,11 @@ def check_client_surface():
             callable(fn) and not inspect.iscoroutinefunction(fn),
             f"client.ads.drafts.{method} is a sync method",
         )
+    check_ads_parity_surface(client.ads, False)
+    ok(
+        not hasattr(client.ads, "create"),
+        "client.ads.create is gone (POST /ads/campaigns was removed: use ads.drafts.create)",
+    )
     ok(callable(client.health), "client.health is callable")
     ok(callable(client.close), "client.close is callable")
     with OmniSocials(api_key="omsk_test_x") as ctx:
@@ -161,6 +215,8 @@ def check_client_surface():
             inspect.iscoroutinefunction(fn),
             f"async client.ads.drafts.{method} is async",
         )
+    check_ads_parity_surface(async_client.ads, True)
+    ok(not hasattr(async_client.ads, "create"), "async client.ads.create is gone")
     ok(
         inspect.iscoroutinefunction(async_client.health),
         "async client.health is a coroutine function",
@@ -408,6 +464,105 @@ def check_tags_transport():
     asyncio.run(run_async())
 
 
+class ApprovalStub:
+    """Answers like POST /posts/{id}/approve and /reject: a ``step_order`` of
+    1 is a review that moved on (409 step_changed, current_step_order 2)."""
+
+    def __init__(self):
+        self.calls = []
+
+    def handler(self, request):
+        self.calls.append(request)
+        body = json.loads(request.content) if request.content else None
+        if body and body.get("step_order") == 1:
+            return httpx.Response(
+                409,
+                json={
+                    "error": {
+                        "code": "step_changed",
+                        "message": "The review is on step 2 now.",
+                        "current_step_order": 2,
+                    }
+                },
+            )
+        return httpx.Response(200, json={"data": {"id": "1024"}})
+
+    def body(self):
+        content = self.calls[-1].content
+        return json.loads(content) if content else None
+
+    def path(self):
+        return self.calls[-1].url.raw_path.decode()
+
+
+def check_approval_transport():
+    print("Approve and reject (stubbed, sync):")
+    stub = ApprovalStub()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=0)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    client.posts.approve("1024")
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/posts/1024/approve"
+        and stub.body() is None,
+        "posts.approve without step_order sends no body",
+    )
+    client.posts.approve("1024", step_order=2)
+    ok(stub.body() == {"step_order": 2}, "posts.approve sends step_order")
+
+    client.posts.reject("1024")
+    ok(
+        stub.path() == "/v1/posts/1024/reject" and stub.body() is None,
+        "posts.reject without arguments sends no body",
+    )
+    client.posts.reject("1024", "Wrong CTA link")
+    ok(stub.body() == {"comment": "Wrong CTA link"}, "posts.reject(id, comment) still works")
+    client.posts.reject("1024", comment="Wrong CTA link", step_order=2)
+    ok(
+        stub.body() == {"comment": "Wrong CTA link", "step_order": 2},
+        "posts.reject sends comment and step_order",
+    )
+    client.posts.reject("1024", step_order=3)
+    ok(stub.body() == {"step_order": 3}, "posts.reject sends step_order alone")
+
+    try:
+        client.posts.approve("1024", step_order=1)
+    except APIError as err:
+        ok(
+            err.status == 409 and err.code == "step_changed"
+            and err.body["error"]["current_step_order"] == 2,
+            "a review that moved on raises 409 step_changed with current_step_order",
+        )
+    else:
+        raise AssertionError("FAILED: step_changed did not raise")
+    client.close()
+
+    print("Approve and reject (stubbed, async):")
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=0)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+        await async_client.posts.approve("1024")
+        ok(stub.body() is None, "async posts.approve without step_order sends no body")
+        await async_client.posts.approve("1024", step_order=4)
+        ok(stub.body() == {"step_order": 4}, "async posts.approve sends step_order")
+        await async_client.posts.reject("1024", comment="No", step_order=4)
+        ok(
+            stub.body() == {"comment": "No", "step_order": 4},
+            "async posts.reject sends comment and step_order",
+        )
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 FEATURE_REQUEST = {
     "id": 412,
     "title": "Post to a topic of a Telegram group",
@@ -591,6 +746,27 @@ def money_calls(ads):
         "activate_multi": lambda: ads.activate_multi([7, 8], 25),
         "resume": lambda: ads.resume(7),
         "update": lambda: ads.update(7, budget={"amount": 50, "currency": "EUR"}, confirm_budget_amount=50),
+        "objects.update": lambda: ads.objects.update(3, "ad_set", "238", budget={"amount": 40, "currency": "EUR"}, confirm_budget_amount=40),
+        "objects.set_status": lambda: ads.objects.set_status(3, "campaign", "120", status="active", confirm_budget_amount=20),
+        "bulk_status": lambda: ads.bulk_status(campaign_ids=[7, 8], status="active", confirm_budget_amount=25),
+        "campaign_ads.set_status": lambda: ads.campaign_ads.set_status(7, 51, status="active", confirm_budget_amount=25),
+        "rules.create": lambda: ads.rules.create(
+            name="Scale winners",
+            conditions=[{"metric": "ctr", "op": "gt", "value": 2}],
+            action={"type": "adjust_budget", "percent": 20, "max_daily_budget": 50},
+            confirm_max_daily_budget=50,
+        ),
+        "rules.update": lambda: ads.rules.update(4, enabled=True),
+        "rules.undo": lambda: ads.rules.undo(9, confirm_budget_amount=25),
+        "accounts.update_settings": lambda: ads.accounts.update_settings(3, spend_cap=500, confirm_budget_amount=500),
+        "reach_frequency.reserve": lambda: ads.reach_frequency.reserve("rf-1", ad_account_id=3, confirm_budget_amount=1000),
+        "budget_schedules.create": lambda: ads.budget_schedules.create(
+            7,
+            start_at="2026-11-27T00:00:00Z",
+            end_at="2026-11-30T00:00:00Z",
+            budget_increase={"type": "absolute", "value": 30},
+            confirm_budget_amount=30,
+        ),
     }
 
 
@@ -687,6 +863,91 @@ def check_ads_transport():
     stub.reset(429, 200)
     client.ads.activate(7, 25)
     ok(len(stub.calls) == 2, "ads.activate after a 429 is retried")
+
+    # Parity calls: method, path, query and body.
+    stub.reset(200)
+    client.ads.objects.tree(3, from_="2026-10-01", to="2026-10-31", status=["active", "paused"], limit=10)
+    ok(
+        stub.calls[-1].method == "GET"
+        and stub.calls[-1].url.path == "/v1/ads/accounts/3/tree"
+        and stub.calls[-1].url.params
+        == httpx.QueryParams({"from": "2026-10-01", "to": "2026-10-31", "status": "active,paused", "limit": "10"}),
+        "ads.objects.tree sends from/to and a comma status list",
+    )
+    client.ads.objects.update(3, "ad_set", "238", name="Autumn", end_at=None)
+    ok(
+        stub.calls[-1].method == "PATCH"
+        and stub.path() == "/v1/ads/accounts/3/objects/ad_set/238"
+        and stub.body() == {"name": "Autumn", "end_at": None},
+        "ads.objects.update sends end_at=None as null",
+    )
+    client.ads.objects.set_status(3, "ad", "77", status="paused")
+    ok(
+        stub.calls[-1].method == "PUT"
+        and stub.path() == "/v1/ads/accounts/3/objects/ad/77/status"
+        and stub.body() == {"status": "paused"},
+        "ads.objects.set_status PUTs the status (a pause needs no amount)",
+    )
+    client.ads.audiences.remove_members("aud 1", ad_account_id=3, schema=["email"], rows=[["fake-hash-1"]])
+    ok(
+        stub.calls[-1].method == "DELETE"
+        and stub.path() == "/v1/ads/audiences/aud%201/members"
+        and stub.body() == {"ad_account_id": 3, "schema": ["email"], "rows": [["fake-hash-1"]]},
+        "ads.audiences.remove_members sends DELETE with a body",
+    )
+    client.ads.audiences.create(ad_account_id=3, name="Buyers", kind="customer_list", customer_file_source="user_provided", schema=["email"], rows=[["fake-hash-2"]])
+    ok(
+        stub.body() == {"ad_account_id": 3, "name": "Buyers", "kind": "customer_list", "customer_file_source": "user_provided", "schema": ["email"], "rows": [["fake-hash-2"]]},
+        "ads.audiences.create sends the first members",
+    )
+    client.ads.media.delete("v9", ad_account_id=3, type="video")
+    ok(
+        stub.calls[-1].method == "DELETE"
+        and stub.calls[-1].url.params == httpx.QueryParams({"ad_account_id": "3", "type": "video"})
+        and stub.calls[-1].content == b"",
+        "ads.media.delete sends ad_account_id and type in the query",
+    )
+    client.ads.lead_forms.create(
+        ad_account_id=3, name="Quote", privacy_policy_url="https://example.com/privacy",
+        questions=[{"type": "email"}], thank_you={"title": "Thanks"}, accept_terms=True,
+    )
+    ok(stub.path() == "/v1/ads/lead-forms" and stub.body()["accept_terms"] is True, "ads.lead_forms.create sends accept_terms")
+    client.ads.reach_frequency.create(
+        ad_account_id=3, objective="awareness", targeting={"countries": ["NL"]},
+        start_at="2026-12-01T00:00:00Z", end_at="2026-12-14T00:00:00Z", reach=200000, frequency_cap=2,
+    )
+    ok(
+        stub.path() == "/v1/ads/reach-frequency"
+        and stub.body() == {
+            "ad_account_id": 3, "objective": "awareness", "targeting": {"countries": ["NL"]},
+            "start_at": "2026-12-01T00:00:00Z", "end_at": "2026-12-14T00:00:00Z",
+            "reach": 200000, "frequency_cap": 2,
+        },
+        "ads.reach_frequency.create sends the prediction fields",
+    )
+    client.ads.insights.query(ad_account_id=3, level="ad", breakdowns=["country"], from_="2026-10-01")
+    ok(
+        stub.path() == "/v1/ads/insights"
+        and stub.body() == {"ad_account_id": 3, "level": "ad", "breakdowns": ["country"], "from": "2026-10-01"},
+        "ads.insights.query sends from_ as from",
+    )
+    client.ads.accounts.update_settings(3, spend_cap=None, confirm_budget_amount="remove")
+    ok(
+        stub.path() == "/v1/ads/accounts/3/settings"
+        and stub.body() == {"spend_cap": None, "confirm_budget_amount": "remove"},
+        "ads.accounts.update_settings removes the cap with an explicit null",
+    )
+    client.ads.update(7, objective="lead_generation", settings={"lead_form_id": "lf-1"})
+    ok(
+        stub.calls[-1].method == "PATCH"
+        and stub.path() == "/v1/ads/campaigns/7"
+        and stub.body() == {"objective": "lead_generation", "settings": {"lead_form_id": "lf-1"}},
+        "ads.update sends the objective and settings of a draft",
+    )
+
+    stub.reset(502, 200)
+    client.ads.objects.tree(3)
+    ok(len(stub.calls) == 2, "ads.objects.tree (a read) after a 502 is retried")
 
     stub.reset(502, 200)
     result = client.ads.capabilities()
@@ -832,6 +1093,22 @@ def check_webhook_verification():
     )
     ok(parsed_stale == event, "tolerance=None skips the timestamp check")
 
+    # Secret rotation: for 24 hours a delivery also carries
+    # X-OmniSocials-Signature-Previous, the same scheme signed with the OLD
+    # secret. The new secret fails on it; the old secret verifies it.
+    old_secret = "whsec_test_old_secret"
+    previous_header = build_signature(old_secret, timestamp, raw_body)
+    try:
+        verify_webhook_signature(raw_body, previous_header, secret)
+    except WebhookVerificationError:
+        ok(True, "the new secret does not verify the Previous header")
+    else:
+        raise AssertionError("FAILED: the new secret verified the Previous header")
+    ok(
+        verify_webhook_signature(raw_body, previous_header, old_secret) == event,
+        "the Previous header verifies with the old secret",
+    )
+
     try:
         verify_webhook_signature(raw_body, signature, "wrong_secret")
     except WebhookVerificationError:
@@ -852,6 +1129,7 @@ if __name__ == "__main__":
     check_client_surface()
     check_construction_guards()
     check_tags_transport()
+    check_approval_transport()
     check_feature_requests_transport()
     check_ads_transport()
     check_webhook_verification()

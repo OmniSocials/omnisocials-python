@@ -130,6 +130,9 @@ class Media:
 
         Files over 100MB are streamed in the background: the response has
         ``data.status == "processing"``; poll ``get()`` until ``"ready"``.
+        When such a file cannot be queued for processing, the answer is
+        ``503 processing_unavailable``: send the same request again in a
+        minute.
         """
         body = drop_none(
             {
@@ -301,7 +304,14 @@ class AsyncMedia:
         folder_id: Optional[str] = None,
         pdf_mode: Optional[str] = None,
     ) -> Any:
-        """``POST /media/upload-from-url`` - server-side fetch, up to 1GB."""
+        """``POST /media/upload-from-url`` - server-side fetch, up to 1GB.
+
+        Files over 100MB are streamed in the background: the response has
+        ``data.status == "processing"``; poll ``get()`` until ``"ready"``.
+        When such a file cannot be queued for processing, the answer is
+        ``503 processing_unavailable``: send the same request again in a
+        minute.
+        """
         body = drop_none(
             {
                 "url": url,
