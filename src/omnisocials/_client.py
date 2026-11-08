@@ -25,6 +25,7 @@ from ._utils import NOT_GIVEN, RATE_LIMIT_ONLY, NotGiven, check_path
 from .resources.accounts import Accounts, AsyncAccounts
 from .resources.ads import Ads, AsyncAds
 from .resources.analytics import Analytics, AsyncAnalytics
+from .resources.credits import AsyncCredits, Credits
 from .resources.audio import AsyncAudio, Audio
 from .resources.automations import AsyncAutomations, Automations
 from .resources.feature_requests import AsyncFeatureRequests, FeatureRequests
@@ -42,7 +43,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.17.0"
+VERSION = "0.18.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -239,6 +240,7 @@ class OmniSocials(_BaseClient):
         self.approval_workflows = ApprovalWorkflows(self)
         self.accounts = Accounts(self)
         self.analytics = Analytics(self)
+        self.credits = Credits(self)
         self.locations = Locations(self)
         self.audio = Audio(self)
         self.pinterest = Pinterest(self)
@@ -341,6 +343,7 @@ class AsyncOmniSocials(_BaseClient):
         self.approval_workflows = AsyncApprovalWorkflows(self)
         self.accounts = AsyncAccounts(self)
         self.analytics = AsyncAnalytics(self)
+        self.credits = AsyncCredits(self)
         self.locations = AsyncLocations(self)
         self.audio = AsyncAudio(self)
         self.pinterest = AsyncPinterest(self)

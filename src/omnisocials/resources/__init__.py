@@ -48,6 +48,7 @@ from .ads import (
     AsyncAds,
 )
 from .analytics import Analytics, AsyncAnalytics
+from .credits import AsyncCredits, Credits
 from .approval_workflows import ApprovalWorkflows, AsyncApprovalWorkflows
 from .audio import AsyncAudio, Audio
 from .automations import AsyncAutomations, Automations
@@ -84,6 +85,8 @@ __all__ = [
     "AsyncAccounts",
     "Analytics",
     "AsyncAnalytics",
+    "Credits",
+    "AsyncCredits",
     "Locations",
     "AsyncLocations",
     "Audio",

@@ -21,6 +21,10 @@ Verifies (without any network access):
 - ads calls send the right method, path and body, and a call that can start
   ad spend is sent once after a 502 or a lost connection while a read is
   retried (through httpx.MockTransport, sync and async)
+- accounts.update sends only the x_statistics keys given (None is sent as
+  null), analytics.refresh_post POSTs the refresh and is retried only after
+  a 429, never after a 502 or a lost connection, and credits.get GETs
+  /credits (through httpx.MockTransport, sync and async)
 - every id goes into the request path as one percent-encoded segment, so an
   id with "/", "?", "#" or ".." cannot reach another endpoint, and an id of
   "", "." or ".." is refused before anything is sent (through
@@ -95,8 +99,9 @@ EXPECTED = {
     "folders": ["list", "create", "update", "delete"],
     "hashtag_sets": ["list", "get", "create", "update", "delete"],
     "tags": ["list", "create", "update", "delete", "apply"],
-    "accounts": ["list", "get"],
-    "analytics": ["post", "posts", "overview", "accounts", "best_times", "tags"],
+    "accounts": ["list", "get", "update"],
+    "analytics": ["post", "posts", "refresh_post", "overview", "accounts", "best_times", "tags"],
+    "credits": ["get"],
     "locations": ["search", "validate"],
     "pinterest": ["list_products", "validate_product"],
     "automations": ["list", "get", "create", "update", "delete", "list_events"],
@@ -742,6 +747,108 @@ def check_feature_requests_transport():
     asyncio.run(run_async())
 
 
+def check_x_statistics_transport():
+    print("X statistics on credits (stubbed, sync and async):")
+    stub = StubAPI()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=2)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    stub.reset(200)
+    client.accounts.update("1234_x", x_statistics={"posts": "light", "followers": "daily"})
+    ok(
+        stub.calls[-1].method == "PATCH" and stub.path() == "/v1/accounts/1234_x",
+        "accounts.update PATCHes /accounts/{id}",
+    )
+    ok(
+        stub.body() == {"x_statistics": {"posts": "light", "followers": "daily"}},
+        "accounts.update sends x_statistics",
+    )
+    client.accounts.update("1234_x", x_statistics={"followers": "off"})
+    ok(stub.body() == {"x_statistics": {"followers": "off"}}, "accounts.update sends only the keys given")
+    schedule = {"at": ["1h", "1d"], "then_every": "7d", "until": "90d"}
+    client.accounts.update("1234_x", x_statistics={"posts": "custom", "post_schedule": schedule})
+    ok(
+        stub.body() == {"x_statistics": {"posts": "custom", "post_schedule": schedule}},
+        "accounts.update sends post_schedule",
+    )
+    client.accounts.update("1234_x", x_statistics=None)
+    ok(
+        stub.calls[-1].content == b'{"x_statistics":null}' or stub.body() == {"x_statistics": None},
+        "accounts.update(x_statistics=None) sends null",
+    )
+
+    client.analytics.refresh_post(9123)
+    ok(
+        stub.calls[-1].method == "POST" and stub.path() == "/v1/analytics/posts/9123/refresh",
+        "analytics.refresh_post POSTs /analytics/posts/{id}/refresh",
+    )
+    client.credits.get()
+    ok(
+        stub.calls[-1].method == "GET" and stub.path() == "/v1/credits",
+        "credits.get GETs /credits",
+    )
+
+    stub.reset(502)
+    try:
+        client.analytics.refresh_post(9123)
+    except ServerError:
+        pass
+    else:
+        raise AssertionError("FAILED: analytics.refresh_post did not raise on a 502")
+    ok(len(stub.calls) == 1, "analytics.refresh_post after a 502 is sent exactly once")
+    stub.reset("drop")
+    try:
+        client.analytics.refresh_post(9123)
+    except APIConnectionError:
+        pass
+    else:
+        raise AssertionError("FAILED: a lost connection did not raise")
+    ok(len(stub.calls) == 1, "analytics.refresh_post after a lost connection is sent exactly once")
+    stub.reset(429, 200)
+    client.analytics.refresh_post(9123)
+    ok(len(stub.calls) == 2, "analytics.refresh_post after a 429 is retried")
+    stub.reset(502, 200)
+    client.credits.get()
+    ok(len(stub.calls) == 2, "credits.get (a read) after a 502 is retried")
+    client.close()
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=2)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+        stub.reset(200)
+        await async_client.accounts.update("1234_x", x_statistics={"posts": "off"})
+        ok(
+            stub.calls[-1].method == "PATCH" and stub.body() == {"x_statistics": {"posts": "off"}},
+            "async accounts.update sends x_statistics",
+        )
+        await async_client.accounts.update("1234_x", x_statistics=None)
+        ok(stub.body() == {"x_statistics": None}, "async accounts.update(x_statistics=None) sends null")
+        await async_client.credits.get()
+        ok(stub.path() == "/v1/credits", "async credits.get GETs /credits")
+        stub.reset(502)
+        try:
+            await async_client.analytics.refresh_post("9123")
+        except ServerError:
+            pass
+        ok(
+            len(stub.calls) == 1 and stub.path() == "/v1/analytics/posts/9123/refresh",
+            "async analytics.refresh_post after a 502 is sent exactly once",
+        )
+        stub.reset(429, 200)
+        await async_client.analytics.refresh_post(9123)
+        ok(len(stub.calls) == 2, "async analytics.refresh_post after a 429 is retried")
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 def money_calls(ads):
     """Every ads call that can start or raise spend, with valid arguments."""
     return {
@@ -1247,6 +1354,7 @@ if __name__ == "__main__":
     check_approval_transport()
     check_feature_requests_transport()
     check_ads_transport()
+    check_x_statistics_transport()
     check_path_segments()
     check_webhook_verification()
     print(f"\nAll {CHECKS} checks passed.")

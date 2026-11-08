@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
-from .._utils import join_list, path_segment
+from .._utils import RATE_LIMIT_ONLY, join_list, path_segment
 from .tags import TagFilter, tag_query
 
 if TYPE_CHECKING:
@@ -20,6 +20,28 @@ class Analytics:
     def post(self, post_id: str) -> Any:
         """``GET /analytics/posts/{id}`` - latest per-platform metrics for one post."""
         return self._client.request("GET", f"/analytics/posts/{path_segment(post_id)}")
+
+    def refresh_post(self, post_id: Union[str, int]) -> Any:
+        """``POST /analytics/posts/{id}/refresh`` - "Update now": read the X
+        numbers of one published post now, outside its check schedule.
+
+        X bills every read, so it costs half a credit per tweet (each part of
+        a thread counts, plus half a credit for a video or GIF), and nothing
+        when the post was already read today (UTC). OmniSocials Connect
+        accounts pay on the partner's own X app. At most 5 reads of a post a
+        UTC day. Needs ``analytics:read``. Returns ``{"data": {"post_id",
+        "tweets": [{"id", "metrics", "read_at"}], "credits_used",
+        "read_at"}}``. Because it can cost credits it is retried only after a
+        429, never after a 5xx or a timeout. Errors: ``402
+        insufficient_credits``, ``404 not_found``, ``409
+        refresh_not_available`` (no published X tweet), ``429
+        refresh_limit``, ``502 refresh_failed`` (nothing charged).
+        """
+        return self._client.request(
+            "POST",
+            f"/analytics/posts/{path_segment(post_id)}/refresh",
+            retry=RATE_LIMIT_ONLY,
+        )
 
     def posts(self, ids: Union[str, Sequence[str]]) -> Any:
         """``GET /analytics/posts?ids=a,b,c`` - bulk metrics for up to 100
@@ -118,6 +140,15 @@ class AsyncAnalytics:
     async def post(self, post_id: str) -> Any:
         """``GET /analytics/posts/{id}`` - latest per-platform metrics for one post."""
         return await self._client.request("GET", f"/analytics/posts/{path_segment(post_id)}")
+
+    async def refresh_post(self, post_id: Union[str, int]) -> Any:
+        """``POST /analytics/posts/{id}/refresh`` - "Update now" (see
+        :meth:`Analytics.refresh_post`). Retried only after a 429."""
+        return await self._client.request(
+            "POST",
+            f"/analytics/posts/{path_segment(post_id)}/refresh",
+            retry=RATE_LIMIT_ONLY,
+        )
 
     async def posts(self, ids: Union[str, Sequence[str]]) -> Any:
         """``GET /analytics/posts?ids=a,b,c`` - bulk metrics for up to 100 posts."""
