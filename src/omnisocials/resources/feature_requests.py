@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from .._utils import drop_none
+from .._utils import drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -83,7 +83,7 @@ class FeatureRequests:
     def get(self, request_id: Union[str, int]) -> Any:
         """``GET /feature-requests/{id}`` - one request with its status and
         the team's replies. Errors: ``400 invalid_id``, ``404 not_found``."""
-        return self._client.request("GET", f"/feature-requests/{request_id}")
+        return self._client.request("GET", f"/feature-requests/{path_segment(request_id)}")
 
 
 class AsyncFeatureRequests:
@@ -113,4 +113,4 @@ class AsyncFeatureRequests:
 
     async def get(self, request_id: Union[str, int]) -> Any:
         """``GET /feature-requests/{id}`` - one request."""
-        return await self._client.request("GET", f"/feature-requests/{request_id}")
+        return await self._client.request("GET", f"/feature-requests/{path_segment(request_id)}")

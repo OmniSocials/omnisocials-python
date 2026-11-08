@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
-from .._utils import join_list
+from .._utils import join_list, path_segment
 from .tags import TagFilter, tag_query
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ class Analytics:
 
     def post(self, post_id: str) -> Any:
         """``GET /analytics/posts/{id}`` - latest per-platform metrics for one post."""
-        return self._client.request("GET", f"/analytics/posts/{post_id}")
+        return self._client.request("GET", f"/analytics/posts/{path_segment(post_id)}")
 
     def posts(self, ids: Union[str, Sequence[str]]) -> Any:
         """``GET /analytics/posts?ids=a,b,c`` - bulk metrics for up to 100
@@ -117,7 +117,7 @@ class AsyncAnalytics:
 
     async def post(self, post_id: str) -> Any:
         """``GET /analytics/posts/{id}`` - latest per-platform metrics for one post."""
-        return await self._client.request("GET", f"/analytics/posts/{post_id}")
+        return await self._client.request("GET", f"/analytics/posts/{path_segment(post_id)}")
 
     async def posts(self, ids: Union[str, Sequence[str]]) -> Any:
         """``GET /analytics/posts?ids=a,b,c`` - bulk metrics for up to 100 posts."""

@@ -40,9 +40,15 @@ Pausing, deleting and archiving stay open, except on Google."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence, Union
-from urllib.parse import quote
 
-from .._utils import NOT_GIVEN, RATE_LIMIT_ONLY, NotGiven, drop_none, join_list
+from .._utils import (
+    NOT_GIVEN,
+    RATE_LIMIT_ONLY,
+    NotGiven,
+    drop_none,
+    join_list,
+    path_segment,
+)
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -97,7 +103,7 @@ __all__ = [
 
 def _seg(value: Union[int, str]) -> str:
     """Percent-encode an id for use as one path segment."""
-    return quote(str(value), safe="")
+    return path_segment(value)
 
 
 def _boost_body(

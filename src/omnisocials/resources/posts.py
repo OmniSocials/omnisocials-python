@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence, Union
 
-from .._utils import NOT_GIVEN, NotGiven, drop_none, join_list
+from .._utils import NOT_GIVEN, NotGiven, drop_none, join_list, path_segment
 from .tags import TagFilter, TagRef, tag_query
 
 if TYPE_CHECKING:
@@ -229,7 +229,7 @@ class Posts:
 
     def get(self, post_id: str) -> Any:
         """``GET /posts/{id}`` - fetch a single post."""
-        return self._client.request("GET", f"/posts/{post_id}")
+        return self._client.request("GET", f"/posts/{path_segment(post_id)}")
 
     def recent_platform(
         self,
@@ -669,7 +669,7 @@ class Posts:
             comment_dm_automation=comment_dm_automation,
             tags=tags,
         )
-        return self._client.request("PATCH", f"/posts/{post_id}", json=body)
+        return self._client.request("PATCH", f"/posts/{path_segment(post_id)}", json=body)
 
     def delete(self, post_id: str) -> None:
         """``DELETE /posts/{id}`` - remove a post from OmniSocials (the live
@@ -680,7 +680,7 @@ class Posts:
         and nothing is deleted: poll :meth:`get` until ``published``,
         ``warning`` or ``failed``, then delete it.
         """
-        return self._client.request("DELETE", f"/posts/{post_id}")
+        return self._client.request("DELETE", f"/posts/{path_segment(post_id)}")
 
     def publish(self, post_id: str) -> Any:
         """``POST /posts/{id}/publish`` - publish a draft or scheduled post now.
@@ -694,7 +694,7 @@ class Posts:
         it publishes only after a new review (create it again with
         ``approval_workflow_id``).
         """
-        return self._client.request("POST", f"/posts/{post_id}/publish")
+        return self._client.request("POST", f"/posts/{path_segment(post_id)}/publish")
 
     def retry(self, post_id: str) -> Any:
         """``POST /posts/{id}/retry`` - retry the failed platforms of a
@@ -708,7 +708,7 @@ class Posts:
         nothing is queued: poll ``get`` and retry once the post is
         ``failed`` or ``warning`` again.
         """
-        return self._client.request("POST", f"/posts/{post_id}/retry")
+        return self._client.request("POST", f"/posts/{path_segment(post_id)}/retry")
 
     def approve(self, post_id: str, step_order: Optional[int] = None) -> Any:
         """``POST /posts/{id}/approve`` - approve the current step of a
@@ -733,7 +733,7 @@ class Posts:
         """
         body = {"step_order": step_order} if step_order is not None else None
         return self._client.request(
-            "POST", f"/posts/{post_id}/approve", json=body
+            "POST", f"/posts/{path_segment(post_id)}/approve", json=body
         )
 
     def reject(
@@ -761,7 +761,7 @@ class Posts:
         if step_order is not None:
             body["step_order"] = step_order
         return self._client.request(
-            "POST", f"/posts/{post_id}/reject", json=body or None
+            "POST", f"/posts/{path_segment(post_id)}/reject", json=body or None
         )
 
     def get_approval(self, post_id: str) -> Any:
@@ -779,7 +779,7 @@ class Posts:
         empty ``steps`` and ``comments``. Read-only; requires the
         ``posts:read`` scope.
         """
-        return self._client.request("GET", f"/posts/{post_id}/approval")
+        return self._client.request("GET", f"/posts/{path_segment(post_id)}/approval")
 
 
 class AsyncPosts:
@@ -823,7 +823,7 @@ class AsyncPosts:
 
     async def get(self, post_id: str) -> Any:
         """``GET /posts/{id}`` - fetch a single post."""
-        return await self._client.request("GET", f"/posts/{post_id}")
+        return await self._client.request("GET", f"/posts/{path_segment(post_id)}")
 
     async def recent_platform(
         self,
@@ -1263,7 +1263,7 @@ class AsyncPosts:
             comment_dm_automation=comment_dm_automation,
             tags=tags,
         )
-        return await self._client.request("PATCH", f"/posts/{post_id}", json=body)
+        return await self._client.request("PATCH", f"/posts/{path_segment(post_id)}", json=body)
 
     async def delete(self, post_id: str) -> None:
         """``DELETE /posts/{id}`` - remove a post from OmniSocials (the live
@@ -1274,7 +1274,7 @@ class AsyncPosts:
         and nothing is deleted: poll :meth:`get` until ``published``,
         ``warning`` or ``failed``, then delete it.
         """
-        return await self._client.request("DELETE", f"/posts/{post_id}")
+        return await self._client.request("DELETE", f"/posts/{path_segment(post_id)}")
 
     async def publish(self, post_id: str) -> Any:
         """``POST /posts/{id}/publish`` - publish a draft or scheduled post now.
@@ -1288,7 +1288,7 @@ class AsyncPosts:
         it publishes only after a new review (create it again with
         ``approval_workflow_id``).
         """
-        return await self._client.request("POST", f"/posts/{post_id}/publish")
+        return await self._client.request("POST", f"/posts/{path_segment(post_id)}/publish")
 
     async def retry(self, post_id: str) -> Any:
         """``POST /posts/{id}/retry`` - retry the failed platforms of a
@@ -1302,7 +1302,7 @@ class AsyncPosts:
         nothing is queued: poll ``get`` and retry once the post is
         ``failed`` or ``warning`` again.
         """
-        return await self._client.request("POST", f"/posts/{post_id}/retry")
+        return await self._client.request("POST", f"/posts/{path_segment(post_id)}/retry")
 
     async def approve(self, post_id: str, step_order: Optional[int] = None) -> Any:
         """``POST /posts/{id}/approve`` - approve the current step of a
@@ -1327,7 +1327,7 @@ class AsyncPosts:
         """
         body = {"step_order": step_order} if step_order is not None else None
         return await self._client.request(
-            "POST", f"/posts/{post_id}/approve", json=body
+            "POST", f"/posts/{path_segment(post_id)}/approve", json=body
         )
 
     async def reject(
@@ -1355,7 +1355,7 @@ class AsyncPosts:
         if step_order is not None:
             body["step_order"] = step_order
         return await self._client.request(
-            "POST", f"/posts/{post_id}/reject", json=body or None
+            "POST", f"/posts/{path_segment(post_id)}/reject", json=body or None
         )
 
     async def get_approval(self, post_id: str) -> Any:
@@ -1373,4 +1373,4 @@ class AsyncPosts:
         empty ``steps`` and ``comments``. Read-only; requires the
         ``posts:read`` scope.
         """
-        return await self._client.request("GET", f"/posts/{post_id}/approval")
+        return await self._client.request("GET", f"/posts/{path_segment(post_id)}/approval")

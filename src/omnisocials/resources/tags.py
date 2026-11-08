@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
-from .._utils import drop_none, join_list
+from .._utils import drop_none, join_list, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -84,12 +84,12 @@ class Tags:
         you pass are sent; posts keep the tag. Errors: ``404 tag_not_found``,
         ``409 tag_exists``."""
         body = drop_none({"name": name, "color": color})
-        return self._client.request("PATCH", f"/tags/{tag_id}", json=body)
+        return self._client.request("PATCH", f"/tags/{path_segment(tag_id)}", json=body)
 
     def delete(self, tag_id: Union[str, int]) -> Any:
         """``DELETE /tags/{id}`` - delete a tag and take it off every post
         (the posts stay). Returns ``{"data": {"tag", "posts_untagged"}}``."""
-        return self._client.request("DELETE", f"/tags/{tag_id}")
+        return self._client.request("DELETE", f"/tags/{path_segment(tag_id)}")
 
     def apply(
         self,
@@ -139,11 +139,11 @@ class AsyncTags:
     ) -> Any:
         """``PATCH /tags/{id}`` - rename or recolour a tag."""
         body = drop_none({"name": name, "color": color})
-        return await self._client.request("PATCH", f"/tags/{tag_id}", json=body)
+        return await self._client.request("PATCH", f"/tags/{path_segment(tag_id)}", json=body)
 
     async def delete(self, tag_id: Union[str, int]) -> Any:
         """``DELETE /tags/{id}`` - delete a tag and take it off every post."""
-        return await self._client.request("DELETE", f"/tags/{tag_id}")
+        return await self._client.request("DELETE", f"/tags/{path_segment(tag_id)}")
 
     async def apply(
         self,

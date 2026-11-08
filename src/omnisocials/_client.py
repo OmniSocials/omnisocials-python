@@ -21,7 +21,7 @@ from ._errors import (
     ServerError,
     ValidationError,
 )
-from ._utils import NOT_GIVEN, RATE_LIMIT_ONLY, NotGiven
+from ._utils import NOT_GIVEN, RATE_LIMIT_ONLY, NotGiven, check_path
 from .resources.accounts import Accounts, AsyncAccounts
 from .resources.ads import Ads, AsyncAds
 from .resources.analytics import Analytics, AsyncAnalytics
@@ -42,7 +42,7 @@ from .resources.webhooks import AsyncWebhooks, Webhooks
 
 __all__ = ["OmniSocials", "AsyncOmniSocials", "NOT_GIVEN", "NotGiven"]
 
-VERSION = "0.16.0"
+VERSION = "0.17.0"
 DEFAULT_BASE_URL = "https://api.omnisocials.com/v1"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
@@ -174,7 +174,9 @@ class _BaseClient:
         }
 
     def _build_url(self, path: str) -> str:
-        return f"{self.base_url}{path}"
+        # Every id in ``path`` was encoded with ``path_segment``; this refuses
+        # an id of "", "." or ".." before the request is sent.
+        return f"{self.base_url}{check_path(path)}"
 
     @staticmethod
     def _handle_response(response: httpx.Response) -> Any:

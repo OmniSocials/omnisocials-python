@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
-from .._utils import drop_none
+from .._utils import drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -26,7 +26,7 @@ class HashtagSets:
 
     def get(self, hashtag_set_id: str) -> Any:
         """``GET /hashtag-sets/{id}`` - fetch a single hashtag set."""
-        return self._client.request("GET", f"/hashtag-sets/{hashtag_set_id}")
+        return self._client.request("GET", f"/hashtag-sets/{path_segment(hashtag_set_id)}")
 
     def create(self, *, name: str, hashtags: HashtagsType) -> Any:
         """``POST /hashtag-sets`` - create a hashtag set.
@@ -52,13 +52,13 @@ class HashtagSets:
         """
         body = drop_none({"name": name, "hashtags": hashtags})
         return self._client.request(
-            "PATCH", f"/hashtag-sets/{hashtag_set_id}", json=body
+            "PATCH", f"/hashtag-sets/{path_segment(hashtag_set_id)}", json=body
         )
 
     def delete(self, hashtag_set_id: str) -> None:
         """``DELETE /hashtag-sets/{id}`` - delete a hashtag set. Returns
         ``None`` (204)."""
-        return self._client.request("DELETE", f"/hashtag-sets/{hashtag_set_id}")
+        return self._client.request("DELETE", f"/hashtag-sets/{path_segment(hashtag_set_id)}")
 
 
 class AsyncHashtagSets:
@@ -71,7 +71,7 @@ class AsyncHashtagSets:
 
     async def get(self, hashtag_set_id: str) -> Any:
         """``GET /hashtag-sets/{id}`` - fetch a single hashtag set."""
-        return await self._client.request("GET", f"/hashtag-sets/{hashtag_set_id}")
+        return await self._client.request("GET", f"/hashtag-sets/{path_segment(hashtag_set_id)}")
 
     async def create(self, *, name: str, hashtags: HashtagsType) -> Any:
         """``POST /hashtag-sets`` - create a hashtag set.
@@ -95,12 +95,12 @@ class AsyncHashtagSets:
         """
         body = drop_none({"name": name, "hashtags": hashtags})
         return await self._client.request(
-            "PATCH", f"/hashtag-sets/{hashtag_set_id}", json=body
+            "PATCH", f"/hashtag-sets/{path_segment(hashtag_set_id)}", json=body
         )
 
     async def delete(self, hashtag_set_id: str) -> None:
         """``DELETE /hashtag-sets/{id}`` - delete a hashtag set. Returns
         ``None`` (204)."""
         return await self._client.request(
-            "DELETE", f"/hashtag-sets/{hashtag_set_id}"
+            "DELETE", f"/hashtag-sets/{path_segment(hashtag_set_id)}"
         )

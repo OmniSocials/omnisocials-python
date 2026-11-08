@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
-from .._utils import NOT_GIVEN, NotGiven, drop_none
+from .._utils import NOT_GIVEN, NotGiven, drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -41,7 +41,7 @@ class Folders:
         body: Dict[str, Any] = drop_none({"name": name})
         if not isinstance(parent_id, NotGiven):
             body["parent_id"] = parent_id
-        return self._client.request("PATCH", f"/folders/{folder_id}", json=body)
+        return self._client.request("PATCH", f"/folders/{path_segment(folder_id)}", json=body)
 
     def delete(self, folder_id: str) -> None:
         """``DELETE /folders/{id}`` - delete a folder. Returns ``None`` (204).
@@ -49,7 +49,7 @@ class Folders:
         The folder's media is NOT deleted: files move to the root and
         subfolders move up to the deleted folder's parent.
         """
-        return self._client.request("DELETE", f"/folders/{folder_id}")
+        return self._client.request("DELETE", f"/folders/{path_segment(folder_id)}")
 
 
 class AsyncFolders:
@@ -80,8 +80,8 @@ class AsyncFolders:
         body: Dict[str, Any] = drop_none({"name": name})
         if not isinstance(parent_id, NotGiven):
             body["parent_id"] = parent_id
-        return await self._client.request("PATCH", f"/folders/{folder_id}", json=body)
+        return await self._client.request("PATCH", f"/folders/{path_segment(folder_id)}", json=body)
 
     async def delete(self, folder_id: str) -> None:
         """``DELETE /folders/{id}`` - delete a folder. Returns ``None`` (204)."""
-        return await self._client.request("DELETE", f"/folders/{folder_id}")
+        return await self._client.request("DELETE", f"/folders/{path_segment(folder_id)}")

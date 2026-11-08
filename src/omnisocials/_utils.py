@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional, Sequence, Union
+from urllib.parse import quote
 
-__all__ = ["NotGiven", "NOT_GIVEN", "RATE_LIMIT_ONLY", "drop_none", "join_list"]
+__all__ = [
+    "NotGiven",
+    "NOT_GIVEN",
+    "RATE_LIMIT_ONLY",
+    "check_path",
+    "drop_none",
+    "join_list",
+    "path_segment",
+]
 
 
 class NotGiven:
@@ -58,3 +67,31 @@ def join_list(value: Union[str, Sequence[str], None]) -> Optional[str]:
     if isinstance(value, str):
         return value
     return ",".join(str(item) for item in value)
+
+
+def path_segment(value: Union[int, str]) -> str:
+    """Percent-encode a caller-supplied id as exactly one URL path segment.
+
+    ``safe=""`` also encodes ``/``, ``?``, ``#`` and ``%``, so an id cannot add a
+    segment, start a query or a fragment, or carry an escape of its own (an id
+    such as ``../webhooks/wh_1/rotate-secret#`` would otherwise move the call to
+    another endpoint of the same API key). Every id that goes into a request
+    path goes through this function.
+    """
+    return quote(str(value), safe="")
+
+
+def check_path(path: str) -> str:
+    """Refuse a request path with an empty, ``.`` or ``..`` segment.
+
+    ``path_segment`` leaves ``.`` and ``..`` as they are, and URL normalisation
+    drops such a segment or climbs one level, so an id of ``..`` would reach
+    another endpoint. An empty id would reach the list route. Raises
+    ``ValueError`` before anything is sent.
+    """
+    for segment in path.split("?", 1)[0].split("/")[1:]:
+        if segment in ("", ".", ".."):
+            raise ValueError(
+                f"Invalid request path {path!r}: an id cannot be empty, '.' or '..'."
+            )
+    return path

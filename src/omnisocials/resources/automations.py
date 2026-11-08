@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
-from .._utils import drop_none
+from .._utils import drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -73,7 +73,7 @@ class Automations:
     def get(self, automation_id: str) -> Any:
         """``GET /automations/{id}`` - fetch a single automation. Requires
         the ``automations:read`` scope (opt-in on the API key)."""
-        return self._client.request("GET", f"/automations/{automation_id}")
+        return self._client.request("GET", f"/automations/{path_segment(automation_id)}")
 
     def create(
         self,
@@ -212,13 +212,13 @@ class Automations:
             status=status,
         )
         return self._client.request(
-            "PATCH", f"/automations/{automation_id}", json=body
+            "PATCH", f"/automations/{path_segment(automation_id)}", json=body
         )
 
     def delete(self, automation_id: str) -> None:
         """``DELETE /automations/{id}`` - delete an automation. Returns
         ``None`` (204). Requires the ``automations:write`` scope."""
-        return self._client.request("DELETE", f"/automations/{automation_id}")
+        return self._client.request("DELETE", f"/automations/{path_segment(automation_id)}")
 
     def list_events(
         self,
@@ -246,7 +246,8 @@ class Automations:
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
         ``reason_label`` (X adds the skip reasons ``dms_closed``,
         ``no_credits``, ``opted_out`` and ``automation_off``; Follow first
-        adds ``already_waiting``), ``person``
+        adds ``already_waiting``; ``plan_inactive`` = the organisation had
+        no active plan or trial, so nothing was sent), ``person``
         (``id``, ``username``; on Facebook the person's name, since
         Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
@@ -257,7 +258,7 @@ class Automations:
         """
         return self._client.request(
             "GET",
-            f"/automations/{automation_id}/events",
+            f"/automations/{path_segment(automation_id)}/events",
             query={"outcome": outcome, "limit": limit, "offset": offset},
         )
 
@@ -287,7 +288,7 @@ class AsyncAutomations:
     async def get(self, automation_id: str) -> Any:
         """``GET /automations/{id}`` - fetch a single automation. Requires
         the ``automations:read`` scope (opt-in on the API key)."""
-        return await self._client.request("GET", f"/automations/{automation_id}")
+        return await self._client.request("GET", f"/automations/{path_segment(automation_id)}")
 
     async def create(
         self,
@@ -426,14 +427,14 @@ class AsyncAutomations:
             status=status,
         )
         return await self._client.request(
-            "PATCH", f"/automations/{automation_id}", json=body
+            "PATCH", f"/automations/{path_segment(automation_id)}", json=body
         )
 
     async def delete(self, automation_id: str) -> None:
         """``DELETE /automations/{id}`` - delete an automation. Returns
         ``None`` (204). Requires the ``automations:write`` scope."""
         return await self._client.request(
-            "DELETE", f"/automations/{automation_id}"
+            "DELETE", f"/automations/{path_segment(automation_id)}"
         )
 
     async def list_events(
@@ -462,7 +463,8 @@ class AsyncAutomations:
         ``dm``, ``story_reply``), ``outcome``, ``reason`` /
         ``reason_label`` (X adds the skip reasons ``dms_closed``,
         ``no_credits``, ``opted_out`` and ``automation_off``; Follow first
-        adds ``already_waiting``), ``person``
+        adds ``already_waiting``; ``plan_inactive`` = the organisation had
+        no active plan or trial, so nothing was sent), ``person``
         (``id``, ``username``; on Facebook the person's name, since
         Facebook has no @handle),
         ``trigger_id``, ``trigger_text``, ``message`` (the DM sent),
@@ -473,6 +475,6 @@ class AsyncAutomations:
         """
         return await self._client.request(
             "GET",
-            f"/automations/{automation_id}/events",
+            f"/automations/{path_segment(automation_id)}/events",
             query={"outcome": outcome, "limit": limit, "offset": offset},
         )

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence
 
-from .._utils import drop_none
+from .._utils import drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -38,7 +38,7 @@ class Webhooks:
         """``GET /webhooks/{id}`` - fetch a webhook of the key's workspace,
         or an organisation-wide webhook of its organisation
         (``workspace_id`` ``None``)."""
-        return self._client.request("GET", f"/webhooks/{webhook_id}")
+        return self._client.request("GET", f"/webhooks/{path_segment(webhook_id)}")
 
     def create(self, *, url: str, events: Sequence[str]) -> Any:
         """``POST /webhooks`` - create a webhook subscription.
@@ -77,10 +77,15 @@ class Webhooks:
         """``PATCH /webhooks/{id}`` - update url, events, or active state.
 
         Ads events need the same ``ads:read`` scope and ``access_ads`` as on
-        ``create()``. Works on organisation-wide webhooks too.
+        ``create()``: when the webhook has Ads events after the change,
+        setting ``url`` or ``events`` or switching it on answers 403 without
+        them. Works on organisation-wide webhooks too.
         ``is_active=True`` switches on a webhook that was switched off (also
         an automatic switch-off); setting ``url``, ``events`` or switching it
-        on makes the key's creator the person behind the webhook.
+        on makes the key's creator the person behind the webhook. Setting
+        ``url`` on an organisation-wide webhook (even its current one) moves
+        it to the key's workspace: from then on it gets only that
+        workspace's events, and the answer shows the new ``workspace_id``.
         """
         body = drop_none(
             {
@@ -89,13 +94,13 @@ class Webhooks:
                 "is_active": is_active,
             }
         )
-        return self._client.request("PATCH", f"/webhooks/{webhook_id}", json=body)
+        return self._client.request("PATCH", f"/webhooks/{path_segment(webhook_id)}", json=body)
 
     def delete(self, webhook_id: str) -> None:
         """``DELETE /webhooks/{id}`` - delete a webhook of the key's
         workspace or an organisation-wide webhook of its organisation.
         Returns ``None`` (204)."""
-        return self._client.request("DELETE", f"/webhooks/{webhook_id}")
+        return self._client.request("DELETE", f"/webhooks/{path_segment(webhook_id)}")
 
     def rotate_secret(self, webhook_id: str) -> Any:
         """``POST /webhooks/{id}/rotate-secret`` - rotate the signing secret.
@@ -110,7 +115,7 @@ class Webhooks:
         the 24 hours replaces the previous secret with the one just rotated
         out. Works on organisation-wide webhooks too.
         """
-        return self._client.request("POST", f"/webhooks/{webhook_id}/rotate-secret")
+        return self._client.request("POST", f"/webhooks/{path_segment(webhook_id)}/rotate-secret")
 
 
 class AsyncWebhooks:
@@ -134,7 +139,7 @@ class AsyncWebhooks:
         """``GET /webhooks/{id}`` - fetch a webhook of the key's workspace,
         or an organisation-wide webhook of its organisation
         (``workspace_id`` ``None``)."""
-        return await self._client.request("GET", f"/webhooks/{webhook_id}")
+        return await self._client.request("GET", f"/webhooks/{path_segment(webhook_id)}")
 
     async def create(self, *, url: str, events: Sequence[str]) -> Any:
         """``POST /webhooks`` - create a webhook subscription.
@@ -173,10 +178,15 @@ class AsyncWebhooks:
         """``PATCH /webhooks/{id}`` - update url, events, or active state.
 
         Ads events need the same ``ads:read`` scope and ``access_ads`` as on
-        ``create()``. Works on organisation-wide webhooks too.
+        ``create()``: when the webhook has Ads events after the change,
+        setting ``url`` or ``events`` or switching it on answers 403 without
+        them. Works on organisation-wide webhooks too.
         ``is_active=True`` switches on a webhook that was switched off (also
         an automatic switch-off); setting ``url``, ``events`` or switching it
-        on makes the key's creator the person behind the webhook.
+        on makes the key's creator the person behind the webhook. Setting
+        ``url`` on an organisation-wide webhook (even its current one) moves
+        it to the key's workspace: from then on it gets only that
+        workspace's events, and the answer shows the new ``workspace_id``.
         """
         body = drop_none(
             {
@@ -186,14 +196,14 @@ class AsyncWebhooks:
             }
         )
         return await self._client.request(
-            "PATCH", f"/webhooks/{webhook_id}", json=body
+            "PATCH", f"/webhooks/{path_segment(webhook_id)}", json=body
         )
 
     async def delete(self, webhook_id: str) -> None:
         """``DELETE /webhooks/{id}`` - delete a webhook of the key's
         workspace or an organisation-wide webhook of its organisation.
         Returns ``None`` (204)."""
-        return await self._client.request("DELETE", f"/webhooks/{webhook_id}")
+        return await self._client.request("DELETE", f"/webhooks/{path_segment(webhook_id)}")
 
     async def rotate_secret(self, webhook_id: str) -> Any:
         """``POST /webhooks/{id}/rotate-secret`` - rotate the signing secret.
@@ -209,5 +219,5 @@ class AsyncWebhooks:
         out. Works on organisation-wide webhooks too.
         """
         return await self._client.request(
-            "POST", f"/webhooks/{webhook_id}/rotate-secret"
+            "POST", f"/webhooks/{path_segment(webhook_id)}/rotate-secret"
         )

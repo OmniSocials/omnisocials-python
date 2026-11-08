@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import IO, TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
-from .._utils import NOT_GIVEN, NotGiven, drop_none
+from .._utils import NOT_GIVEN, NotGiven, drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -86,7 +86,7 @@ class Media:
 
     def get(self, media_id: str) -> Any:
         """``GET /media/{id}`` - fetch a single library file."""
-        return self._client.request("GET", f"/media/{media_id}")
+        return self._client.request("GET", f"/media/{path_segment(media_id)}")
 
     def upload(
         self,
@@ -232,7 +232,7 @@ class Media:
         body: Dict[str, Any] = drop_none({"name": name})
         if not isinstance(folder_id, NotGiven):
             body["folder_id"] = folder_id
-        return self._client.request("PATCH", f"/media/{media_id}", json=body)
+        return self._client.request("PATCH", f"/media/{path_segment(media_id)}", json=body)
 
     def delete(self, media_id: str) -> None:
         """``DELETE /media/{id}`` - delete a file. Returns ``None`` (204).
@@ -240,7 +240,7 @@ class Media:
         Fails with 409 ``media_in_use`` if the file is attached to a
         scheduled or publishing post.
         """
-        return self._client.request("DELETE", f"/media/{media_id}")
+        return self._client.request("DELETE", f"/media/{path_segment(media_id)}")
 
 
 class AsyncMedia:
@@ -273,7 +273,7 @@ class AsyncMedia:
 
     async def get(self, media_id: str) -> Any:
         """``GET /media/{id}`` - fetch a single library file."""
-        return await self._client.request("GET", f"/media/{media_id}")
+        return await self._client.request("GET", f"/media/{path_segment(media_id)}")
 
     async def upload(
         self,
@@ -391,8 +391,8 @@ class AsyncMedia:
         body: Dict[str, Any] = drop_none({"name": name})
         if not isinstance(folder_id, NotGiven):
             body["folder_id"] = folder_id
-        return await self._client.request("PATCH", f"/media/{media_id}", json=body)
+        return await self._client.request("PATCH", f"/media/{path_segment(media_id)}", json=body)
 
     async def delete(self, media_id: str) -> None:
         """``DELETE /media/{id}`` - delete a file. Returns ``None`` (204)."""
-        return await self._client.request("DELETE", f"/media/{media_id}")
+        return await self._client.request("DELETE", f"/media/{path_segment(media_id)}")

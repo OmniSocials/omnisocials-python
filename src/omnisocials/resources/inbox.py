@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
-from urllib.parse import quote
 
-from .._utils import drop_none
+from .._utils import drop_none, path_segment
 
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
@@ -20,7 +19,7 @@ def _encode_id(conversation_id: str) -> str:
     ``()`` (e.g. ``linkedin_comment_urn:li:activity:123``), so every reserved
     character must be encoded; ``safe=""`` leaves nothing unescaped.
     """
-    return quote(conversation_id, safe="")
+    return path_segment(conversation_id)
 
 
 def _reply_body(

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .._utils import path_segment
+
 if TYPE_CHECKING:
     from .._client import AsyncOmniSocials, OmniSocials
 
@@ -24,7 +26,7 @@ class Accounts:
 
     def get(self, account_id: str) -> Any:
         """``GET /accounts/{id}`` - fetch a single connected account."""
-        return self._client.request("GET", f"/accounts/{account_id}")
+        return self._client.request("GET", f"/accounts/{path_segment(account_id)}")
 
 
 class AsyncAccounts:
@@ -37,4 +39,4 @@ class AsyncAccounts:
 
     async def get(self, account_id: str) -> Any:
         """``GET /accounts/{id}`` - fetch a single connected account."""
-        return await self._client.request("GET", f"/accounts/{account_id}")
+        return await self._client.request("GET", f"/accounts/{path_segment(account_id)}")

@@ -21,6 +21,10 @@ Verifies (without any network access):
 - ads calls send the right method, path and body, and a call that can start
   ad spend is sent once after a 502 or a lost connection while a read is
   retried (through httpx.MockTransport, sync and async)
+- every id goes into the request path as one percent-encoded segment, so an
+  id with "/", "?", "#" or ".." cannot reach another endpoint, and an id of
+  "", "." or ".." is refused before anything is sent (through
+  httpx.MockTransport, sync and async)
 """
 
 import asyncio
@@ -992,6 +996,117 @@ def check_ads_transport():
     asyncio.run(run_async())
 
 
+# Every method that puts a caller-supplied id into the request path:
+# (resource, method, HTTP method, path before the id, path after the id).
+ID_PATHS = [
+    ("accounts", "get", "GET", "/v1/accounts/", ""),
+    ("analytics", "post", "GET", "/v1/analytics/posts/", ""),
+    ("feature_requests", "get", "GET", "/v1/feature-requests/", ""),
+    ("folders", "update", "PATCH", "/v1/folders/", ""),
+    ("folders", "delete", "DELETE", "/v1/folders/", ""),
+    ("hashtag_sets", "get", "GET", "/v1/hashtag-sets/", ""),
+    ("hashtag_sets", "update", "PATCH", "/v1/hashtag-sets/", ""),
+    ("hashtag_sets", "delete", "DELETE", "/v1/hashtag-sets/", ""),
+    ("media", "get", "GET", "/v1/media/", ""),
+    ("media", "update", "PATCH", "/v1/media/", ""),
+    ("media", "delete", "DELETE", "/v1/media/", ""),
+    ("tags", "update", "PATCH", "/v1/tags/", ""),
+    ("tags", "delete", "DELETE", "/v1/tags/", ""),
+    ("webhooks", "get", "GET", "/v1/webhooks/", ""),
+    ("webhooks", "update", "PATCH", "/v1/webhooks/", ""),
+    ("webhooks", "delete", "DELETE", "/v1/webhooks/", ""),
+    ("webhooks", "rotate_secret", "POST", "/v1/webhooks/", "/rotate-secret"),
+    ("posts", "get", "GET", "/v1/posts/", ""),
+    ("posts", "update", "PATCH", "/v1/posts/", ""),
+    ("posts", "delete", "DELETE", "/v1/posts/", ""),
+    ("posts", "publish", "POST", "/v1/posts/", "/publish"),
+    ("posts", "retry", "POST", "/v1/posts/", "/retry"),
+    ("posts", "approve", "POST", "/v1/posts/", "/approve"),
+    ("posts", "reject", "POST", "/v1/posts/", "/reject"),
+    ("posts", "get_approval", "GET", "/v1/posts/", "/approval"),
+    ("automations", "get", "GET", "/v1/automations/", ""),
+    ("automations", "update", "PATCH", "/v1/automations/", ""),
+    ("automations", "delete", "DELETE", "/v1/automations/", ""),
+    ("automations", "list_events", "GET", "/v1/automations/", "/events"),
+    ("inbox", "mark_read", "POST", "/v1/inbox/conversations/", "/read"),
+]
+
+# An id an integrator might pass on from its own users. Unencoded, "/" adds
+# segments, ".." climbs out of /posts and "#" cuts off the rest of the path:
+# posts.publish(HOSTILE_ID) would POST /webhooks/wh_fake/rotate-secret.
+HOSTILE_ID = "../webhooks/wh_fake/rotate-secret#"
+HOSTILE_SEGMENT = "..%2Fwebhooks%2Fwh_fake%2Frotate-secret%23"
+
+
+def check_path_segments():
+    print("Path segments (stubbed, sync):")
+    stub = StubAPI()
+    client = OmniSocials(api_key="omsk_test_x", max_retries=0)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(stub.handler), headers=client._default_headers()
+    )
+
+    for resource, name, verb, before, after in ID_PATHS:
+        getattr(getattr(client, resource), name)(HOSTILE_ID)
+        sent = stub.calls[-1]
+        ok(
+            sent.method == verb
+            and stub.path() == f"{before}{HOSTILE_SEGMENT}{after}"
+            and sent.url.query == b"",
+            f"{resource}.{name} keeps a hostile id inside one segment of {before}{{id}}{after}",
+        )
+
+    for value, encoded in (("a b", "a%20b"), ("x?y=1", "x%3Fy%3D1"), ("50%", "50%25"), (42, "42")):
+        client.posts.get(value)
+        ok(stub.path() == f"/v1/posts/{encoded}", f"posts.get({value!r}) sends /posts/{encoded}")
+
+    for bad in ("", ".", ".."):
+        before = len(stub.calls)
+        for call in (
+            lambda: client.posts.delete(bad),
+            lambda: client.webhooks.rotate_secret(bad),
+            lambda: client.inbox.mark_read(bad),
+            lambda: client.ads.get(bad),
+        ):
+            try:
+                call()
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"FAILED: an id of {bad!r} was not refused")
+        ok(len(stub.calls) == before, f"an id of {bad!r} raises ValueError and sends nothing")
+    client.close()
+
+    print("Path segments (stubbed, async):")
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=0)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(stub.handler),
+            headers=async_client._default_headers(),
+        )
+        for resource, name, verb, before, after in ID_PATHS:
+            await getattr(getattr(async_client, resource), name)(HOSTILE_ID)
+            ok(
+                stub.calls[-1].method == verb
+                and stub.path() == f"{before}{HOSTILE_SEGMENT}{after}",
+                f"async {resource}.{name} keeps a hostile id inside one segment",
+            )
+        sent = len(stub.calls)
+        try:
+            await async_client.posts.publish("..")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("FAILED: async posts.publish('..') was not refused")
+        ok(len(stub.calls) == sent, "async posts.publish('..') raises ValueError and sends nothing")
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 def build_signature(secret, timestamp, raw_body):
     """Mirror backend/services/webhooks/webhookDispatcher.js signPayload():
     HMAC-SHA256 hex over `${timestamp}.${rawBody}`, header `t=<ts>,v1=<hex>`.
@@ -1132,5 +1247,6 @@ if __name__ == "__main__":
     check_approval_transport()
     check_feature_requests_transport()
     check_ads_transport()
+    check_path_segments()
     check_webhook_verification()
     print(f"\nAll {CHECKS} checks passed.")
