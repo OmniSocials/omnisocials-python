@@ -99,7 +99,7 @@ client.posts.update(proposal["data"]["id"], draft=False)
 
 ### Comment-to-DM automations
 
-Answer a keyword in an Instagram comment with a DM, once per person, with an optional public reply under the comment. Pass `comment_dm_automation=` on `create` (Instagram must be in `channels`) and the automation is bound to that post; it starts listening once the post is live. Needs the opt-in `automations:write` scope on the key. `client.automations` manages the automations themselves (`list`, `get`, `create`, `update`, `delete`) and reads their activity (`list_events`, `automations:read`). On `update`, `comment_dm_automation=` as a dict replaces the post's automation and an explicit `None` removes it. Instagram rules: one private reply per comment, within 7 days; OmniSocials caps sends at 180 DMs an hour per account.
+Answer a keyword in an Instagram comment with a DM, once per person, with an optional public reply under the comment. Pass `comment_dm_automation=` on `create` (Instagram must be in `channels`) and the automation is bound to that post; it starts listening once the post is live. Needs the opt-in `automations:write` scope on the key. `client.automations` manages the automations themselves (`list`, `get`, `create`, `update`, `delete`) and reads their activity (`list_events`, `automations:read`). On `update`, `comment_dm_automation=` as a dict replaces the post's automation and an explicit `None` removes it. Instagram rules: one private reply per comment, within 7 days; OmniSocials caps sends at 700 DMs an hour per account, and an answer over the cap waits in a queue for up to a day.
 
 ```python
 post = client.posts.create(
@@ -138,6 +138,23 @@ client.automations.update(
             "enabled": True,
             "first_message": {"text": "Tap the button and I'll send you the link 👇", "button": "Send me the link"},
             "not_following": {"text": "Almost there! Follow @yourbrand first, then tap the button again.", "button": "I follow now"},
+        },
+    },
+)
+```
+
+A follow-up (`actions["follow_up"]`, Instagram and Facebook) sends one more DM `delay_hours` (1 to 23, default 23) after the answer went out, with an optional link `button`. Meta allows an automatic message only within 24 hours after the person's last DM, button tap or quick reply; the comment and the private reply do not open that window. So on an Instagram comment with Follow first off the first DM becomes a tap step, a short text with one button (`tap`, default "Tap the button and I'll send you the link 👇" / "Send me the link"), and the tap sends the DM text. Until the tap the event is `waiting` with `event["follow_gate"]["mode"]` `"tap"`; people who never tap get no link and no follow-up. With Follow first on, its own tap is the tap; DM and story reply triggers need none. A Facebook comment answer has no button, so only people who answer the DM in Messenger get the follow-up. At send time it is skipped when the automation is off, the person said stop, your team answered by hand or the window closed: `event["follow_up"]` carries `state`, `due_at`, `sent_at` and `reason` / `reason_label`, and `stats["follow_ups_sent"]` / `stats["follow_ups_skipped"]` count them. `None`, `False` or `{"enabled": False}` turns it off and keeps the texts; on `update` it merges (`"button": None` removes the button). `"enabled": True` on an X automation is a `400 follow_up_not_supported`.
+
+```python
+client.automations.update(
+    automation_id,
+    actions={
+        "dm": {"text": "Here is the guide: https://example.com/guide"},
+        "follow_up": {
+            "enabled": True,
+            "text": "Did the guide help? Book a free call if you want a hand.",
+            "delay_hours": 23,
+            "button": {"title": "Book a call", "url": "https://example.com/call"},
         },
     },
 )
