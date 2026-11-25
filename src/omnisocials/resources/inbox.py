@@ -29,6 +29,7 @@ def _reply_body(
     attachment_type: Optional[str],
     message_id: Optional[str],
     include_next: Optional[bool],
+    mention_author: Optional[bool],
 ) -> Dict[str, Any]:
     return drop_none(
         {
@@ -37,6 +38,7 @@ def _reply_body(
             "attachment_type": attachment_type,
             "message_id": message_id,
             "include_next": include_next,
+            "mention_author": mention_author,
         }
     )
 
@@ -153,6 +155,7 @@ class Inbox:
         attachment_type: Optional[str] = None,
         message_id: Optional[str] = None,
         include_next: Optional[bool] = None,
+        mention_author: Optional[bool] = None,
     ) -> Any:
         """``POST /inbox/conversations/{id}/reply`` - send a reply into the
         conversation (a DM message, or a reply to the comment/mention).
@@ -199,6 +202,20 @@ class Inbox:
         returns under ``"data"``, using its default queue order and
         filters; ``None`` when nothing is waiting) and ``"remaining"`` in
         the response. Saves the extra call when working through the inbox.
+
+        Facebook comment replies: pass ``mention_author=True`` to tag the
+        commenter. OmniSocials puts ``@[<commenter id>]`` before the text,
+        so the reply starts with their name as a clickable link and
+        Facebook notifies them; do not write the name yourself. The
+        response then carries ``"mention"``: ``{"status", "name",
+        "message"}``, where ``status`` is ``"tagged"`` (clickable tag,
+        person notified), ``"plain_name"`` (Facebook did not accept the
+        tag; the reply was edited to start with "@Name" as plain text),
+        ``"failed"`` (the tag and the edit failed; the reply can show the
+        raw ``@[id]`` text: delete it with ``delete_message(data["id"])`` and send
+        it again without ``mention_author``) or ``"unverified"`` (posted,
+        but the tag could not be checked). Any other conversation raises
+        ``400`` ``mention_not_supported`` and nothing is sent.
         """
         body = _reply_body(
             text=text,
@@ -206,6 +223,7 @@ class Inbox:
             attachment_type=attachment_type,
             message_id=message_id,
             include_next=include_next,
+            mention_author=mention_author,
         )
         return self._client.request(
             "POST",
@@ -478,6 +496,7 @@ class AsyncInbox:
         attachment_type: Optional[str] = None,
         message_id: Optional[str] = None,
         include_next: Optional[bool] = None,
+        mention_author: Optional[bool] = None,
     ) -> Any:
         """``POST /inbox/conversations/{id}/reply`` - send a reply into the
         conversation (a DM message, or a reply to the comment/mention).
@@ -524,6 +543,20 @@ class AsyncInbox:
         returns under ``"data"``, using its default queue order and
         filters; ``None`` when nothing is waiting) and ``"remaining"`` in
         the response. Saves the extra call when working through the inbox.
+
+        Facebook comment replies: pass ``mention_author=True`` to tag the
+        commenter. OmniSocials puts ``@[<commenter id>]`` before the text,
+        so the reply starts with their name as a clickable link and
+        Facebook notifies them; do not write the name yourself. The
+        response then carries ``"mention"``: ``{"status", "name",
+        "message"}``, where ``status`` is ``"tagged"`` (clickable tag,
+        person notified), ``"plain_name"`` (Facebook did not accept the
+        tag; the reply was edited to start with "@Name" as plain text),
+        ``"failed"`` (the tag and the edit failed; the reply can show the
+        raw ``@[id]`` text: delete it with ``delete_message(data["id"])`` and send
+        it again without ``mention_author``) or ``"unverified"`` (posted,
+        but the tag could not be checked). Any other conversation raises
+        ``400`` ``mention_not_supported`` and nothing is sent.
         """
         body = _reply_body(
             text=text,
@@ -531,6 +564,7 @@ class AsyncInbox:
             attachment_type=attachment_type,
             message_id=message_id,
             include_next=include_next,
+            mention_author=mention_author,
         )
         return await self._client.request(
             "POST",

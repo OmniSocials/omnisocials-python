@@ -29,6 +29,8 @@ Verifies (without any network access):
   id with "/", "?", "#" or ".." cannot reach another endpoint, and an id of
   "", "." or ".." is refused before anything is sent (through
   httpx.MockTransport, sync and async)
+- inbox.reply sends mention_author only when given and returns mention
+  (through httpx.MockTransport, sync and async)
 """
 
 import asyncio
@@ -1214,6 +1216,67 @@ def check_path_segments():
     asyncio.run(run_async())
 
 
+def check_inbox_reply_mention():
+    print("Inbox reply mention_author (stubbed, sync and async):")
+
+    def answer(request):
+        stub_calls.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "data": {"id": "104970664", "text": "Jamie Rivera Thanks!"},
+                "mention": {
+                    "status": "tagged",
+                    "name": "Jamie Rivera",
+                    "message": "Facebook shows the name as a clickable tag.",
+                },
+            },
+        )
+
+    stub_calls = []
+    client = OmniSocials(api_key="omsk_test_x", max_retries=0)
+    client._http.close()
+    client._http = httpx.Client(
+        transport=httpx.MockTransport(answer), headers=client._default_headers()
+    )
+    result = client.inbox.reply(
+        "fb_comment_1_2", "Thanks!", message_id="104970331", mention_author=True
+    )
+    ok(
+        stub_calls[-1].method == "POST"
+        and stub_calls[-1].url.raw_path.decode() == "/v1/inbox/conversations/fb_comment_1_2/reply"
+        and json.loads(stub_calls[-1].content)
+        == {"text": "Thanks!", "message_id": "104970331", "mention_author": True},
+        "inbox.reply sends mention_author",
+    )
+    ok(result["mention"]["status"] == "tagged", "inbox.reply returns mention")
+    client.inbox.reply("fb_comment_1_2", "Thanks!")
+    ok(
+        "mention_author" not in json.loads(stub_calls[-1].content),
+        "inbox.reply leaves mention_author out when not given",
+    )
+    client.close()
+
+    async def run_async():
+        async_client = AsyncOmniSocials(api_key="omsk_test_x", max_retries=0)
+        await async_client._http.aclose()
+        async_client._http = httpx.AsyncClient(
+            transport=httpx.MockTransport(answer),
+            headers=async_client._default_headers(),
+        )
+        res = await async_client.inbox.reply(
+            "fb_comment_1_2", "Thanks!", mention_author=True
+        )
+        ok(
+            json.loads(stub_calls[-1].content) == {"text": "Thanks!", "mention_author": True}
+            and res["mention"]["name"] == "Jamie Rivera",
+            "async inbox.reply sends mention_author and returns mention",
+        )
+        await async_client.aclose()
+
+    asyncio.run(run_async())
+
+
 def build_signature(secret, timestamp, raw_body):
     """Mirror backend/services/webhooks/webhookDispatcher.js signPayload():
     HMAC-SHA256 hex over `${timestamp}.${rawBody}`, header `t=<ts>,v1=<hex>`.
@@ -1356,5 +1419,6 @@ if __name__ == "__main__":
     check_ads_transport()
     check_x_statistics_transport()
     check_path_segments()
+    check_inbox_reply_mention()
     check_webhook_verification()
     print(f"\nAll {CHECKS} checks passed.")

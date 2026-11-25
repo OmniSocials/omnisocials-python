@@ -451,6 +451,21 @@ while item["data"]:
     item = {"data": reply.get("next"), "remaining": reply.get("remaining", 0)}
 ```
 
+### Tag the commenter on Facebook
+
+On a Facebook comment, pass `mention_author=True` to `reply` and OmniSocials puts the tag `@[<commenter id>]` before your text: the reply starts with the commenter's name as a clickable link, and Facebook notifies them. Do not write the name or `@[id]` yourself. The answer then carries `mention` with `result["mention"]["status"]`: `tagged` (clickable tag), `plain_name` (Facebook did not accept the tag; the reply was edited to start with "@Name" as plain text), `failed` (the reply can show the raw `@[id]` text: delete it with `inbox.delete_message(result["data"]["id"])` and send it again without the option) or `unverified` (posted, but not checked). Only comments on the Facebook Page's own posts; any other conversation answers 400 `mention_not_supported` and nothing is sent.
+
+```python
+result = client.inbox.reply(
+    item["message"]["conversation_id"],
+    "Thanks, we ship to Belgium too!",
+    message_id=item["message"]["id"],
+    mention_author=True,  # Facebook comments only; do not write the name yourself
+)
+if result["mention"]["status"] != "tagged":
+    print(result["mention"]["message"])
+```
+
 ### X DM replies use credits
 
 Replying to an X DM costs 2 prepaid credits per send, debited from the company balance before the send and auto-refunded if the send fails. `inbox.reply` can fail with a `402` on two new codes: `insufficient_credits` (the balance can't cover the 2 credits) and `x_inbox_suspended` (the workspace's X inbox auto-suspended after the balance hit zero; a top-up turns it back on by itself, but DMs that arrived while suspended are not recovered).
